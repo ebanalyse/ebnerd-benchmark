@@ -1,0 +1,16 @@
+[project]
+name = "ebrec"
+description = "Ekstra Bladet Benchmark"
+version = "0.0.1"
+authors = [
+    { name = "Johannes Kruse", email = "johannes.kruse@eb.dk" }
+]
+requires-python = ">=3.10, <4"
+dependencies = [
+    "numpy==1.26.1"
+]
+
+[project.optional-dependencies]
+# pip install "my_project[extras]"
+extras = ["transformers"]
+

@@ -1,0 +1,2 @@
+# EBNeRD-CodaBench
+Ekstra Bladet News Recommendation Dataset is a large-scale Danish dataset for news recommendation research. This repository provides the script to evaluate models and a sample submission for EBNeRD Recommendation Challenge.

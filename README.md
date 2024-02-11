@@ -21,5 +21,13 @@ git clone https://github.com/ebanalyse/ebnerd-benchmark.git
 pip install .
 ```
 
+## Running GPU
+```
+tensorflow-gpu; sys_platform == 'linux'
+tensorflow-macos; sys_platform == 'darwin'
+```
+
+
+
 # Algorithms
 (...)

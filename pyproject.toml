@@ -5,13 +5,19 @@ version = "0.0.1"
 authors = [
     { name = "Johannes Kruse", email = "johannes.kruse@eb.dk" }
 ]
-requires-python = ">=3.10, <4"
+requires-python = ">=3.10, <3.12"
 dependencies = [
+    # newsrec:
+    "tensorflow>=2.12.0, <2.16.0",
+    # Fastformer; DeepCTR
+    "torch>=2.0.0, <2.3.0",
+    # GENERAL:
+    "numpy=>1.24.0, <1.27.0",
     "polars==0.20.7",
-    "numpy==1.26.0"
+    "tqdm",
 ]
 
 [project.optional-dependencies]
 # pip install "my_project[extras]"
+# pip install -e .'[notebooks]'
 notebooks = ["transformers"]
-

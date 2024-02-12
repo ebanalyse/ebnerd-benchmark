@@ -1,6 +1,5 @@
-from typing import Iterable
-
 from collections import Counter
+from typing import Iterable
 import numpy as np
 
 

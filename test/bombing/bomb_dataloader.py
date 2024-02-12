@@ -6,9 +6,8 @@ from ebrec.models.newsrec.dataloader import (
     LSTURDataLoader,
     NRMSDataLoader,
 )
-from ebrec.utils._behaviors import create_user_id_mapping
-from ebrec.utils._articles import create_title_mapping
-from ebrec.utils._python import create_lookup_dict
+from ebrec.utils._behaviors import create_user_id_to_int_mapping
+from ebrec.utils._articles import create_article_id_to_value_mapping
 
 from ebrec.utils._python import time_it
 from tqdm import tqdm
@@ -53,8 +52,10 @@ df_behaviors = (
     .pipe(create_binary_labels_column)
 )
 # => MAPPINGS:
-article_mapping = create_title_mapping(df=df_articles, column=TOKEN_COL)
-user_mapping = create_user_id_mapping(df=df_behaviors)
+article_mapping = create_article_id_to_value_mapping(
+    df=df_articles, value_col=TOKEN_COL
+)
+user_mapping = create_user_id_to_int_mapping(df=df_behaviors)
 # => NPRATIO IMPRESSION - SAME LENGTHS:
 df_behaviors_train = df_behaviors.filter(pl.col(N_SAMPLES) == pl.col(N_SAMPLES).min())
 # => FOR TEST-DATALOADER
@@ -93,7 +94,7 @@ def bomb_NRMSDataLoader():
 
 @time_it(True)
 def bomb_LSTURDataLoader():
-    user_mapping = create_user_id_mapping(df=df_behaviors_train)
+    user_mapping = create_user_id_to_int_mapping(df=df_behaviors_train)
 
     dataloader = LSTURDataLoader(
         behaviors=df_behaviors_train,

@@ -113,7 +113,7 @@ def create_binary_labels_column(
     )
 
 
-def create_user_id_mapping(
+def create_user_id_to_int_mapping(
     df: pl.DataFrame, user_col: str = DEFAULT_USER_COL, value_str: str = "id"
 ):
     return create_lookup_dict(
@@ -1110,3 +1110,71 @@ def add_session_id_and_next_items(
         .collect()
     )
     return df.join(df_concat, on=GROUPBY_ID, how="left").drop(GROUPBY_ID)
+
+
+def add_prediction_scores(
+    df: pl.DataFrame,
+    scores: Iterable[float],
+    prediction_scores_col: str = "scores",
+    inview_col: str = DEFAULT_INVIEW_ARTICLES_COL,
+) -> pl.DataFrame:
+    """
+    Adds prediction scores to a DataFrame for the corresponding test predictions.
+
+    Args:
+        df (pl.DataFrame): The DataFrame to which the prediction scores will be added.
+        test_prediction (Iterable[float]): A list, array or simialr of prediction scores for the test data.
+
+    Returns:
+        pl.DataFrame: The DataFrame with the prediction scores added.
+
+    Raises:
+        ValueError: If there is a mismatch in the lengths of the list columns.
+
+    >>> from ebrec.utils._constants import DEFAULT_INVIEW_ARTICLES_COL
+    >>> df = pl.DataFrame(
+            {
+                "id": [1,2],
+                DEFAULT_INVIEW_ARTICLES_COL: [
+                    [1, 2, 3],
+                    [4, 5],
+                ],
+            }
+        )
+    >>> test_prediction = [[0.3], [0.4], [0.5], [0.6], [0.7]]
+    >>> add_prediction_scores(df.lazy(), test_prediction).collect()
+        shape: (2, 3)
+        ┌─────┬─────────────┬────────────────────────┐
+        │ id  ┆ article_ids ┆ prediction_scores_test │
+        │ --- ┆ ---         ┆ ---                    │
+        │ i64 ┆ list[i64]   ┆ list[f32]              │
+        ╞═════╪═════════════╪════════════════════════╡
+        │ 1   ┆ [1, 2, 3]   ┆ [0.3, 0.4, 0.5]        │
+        │ 2   ┆ [4, 5]      ┆ [0.6, 0.7]             │
+        └─────┴─────────────┴────────────────────────┘
+    ## The input can can also be an np.array
+    >>> add_prediction_scores(df.lazy(), np.array(test_prediction)).collect()
+        shape: (2, 3)
+        ┌─────┬─────────────┬────────────────────────┐
+        │ id  ┆ article_ids ┆ prediction_scores_test │
+        │ --- ┆ ---         ┆ ---                    │
+        │ i64 ┆ list[i64]   ┆ list[f32]              │
+        ╞═════╪═════════════╪════════════════════════╡
+        │ 1   ┆ [1, 2, 3]   ┆ [0.3, 0.4, 0.5]        │
+        │ 2   ┆ [4, 5]      ┆ [0.6, 0.7]             │
+        └─────┴─────────────┴────────────────────────┘
+    """
+    GROUPBY_ID = generate_unique_name(df.columns, "_groupby_id")
+    # df_preds = pl.DataFrame()
+    scores = (
+        df.lazy()
+        .select(pl.col(inview_col))
+        .with_row_index(GROUPBY_ID)
+        .explode(inview_col)
+        .with_columns(pl.Series(prediction_scores_col, scores).explode())
+        .group_by(GROUPBY_ID)
+        .agg(inview_col, prediction_scores_col)
+        .sort(GROUPBY_ID)
+        .collect()
+    )
+    return df.with_columns(scores.select(prediction_scores_col)).drop(GROUPBY_ID)

@@ -2,8 +2,8 @@ from pathlib import Path
 import polars as pl
 import numpy as np
 import torch
-from ebrec.utils._behaviors import create_user_id_mapping
-from ebrec.utils._articles import create_title_mapping
+from ebrec.utils._behaviors import create_user_id_to_int_mapping
+from ebrec.utils._articles import create_article_id_to_value_mapping
 
 from ebrec.utils._python import time_it
 from ebrec.utils._behaviors import create_binary_labels_column
@@ -45,8 +45,10 @@ df_behaviors = (
     .pipe(create_binary_labels_column)
 )
 # => MAPPINGS:
-article_mapping = create_title_mapping(df=df_articles, column=TOKEN_COL)
-user_mapping = create_user_id_mapping(df=df_behaviors)
+article_mapping = create_article_id_to_value_mapping(
+    df=df_articles, value_col=TOKEN_COL
+)
+user_mapping = create_user_id_to_int_mapping(df=df_behaviors)
 # => NPRATIO IMPRESSION - SAME LENGTHS:
 df_behaviors_train = df_behaviors.filter(pl.col(N_SAMPLES) == pl.col(N_SAMPLES).min())
 # => FOR TEST-DATALOADER

@@ -18,13 +18,13 @@ def load_article_id_embeddings(
     return df.join(pl.read_parquet(path), on=item_col, how="left")
 
 
-def create_title_mapping(
+def create_article_id_to_value_mapping(
     df: pl.DataFrame,
-    column: str,
+    value_col: str,
     article_col: str = DEFAULT_ARTICLE_ID_COL,
 ):
     return create_lookup_dict(
-        df.select(article_col, column), key=article_col, value=column
+        df.select(article_col, value_col), key=article_col, value=value_col
     )
 
 

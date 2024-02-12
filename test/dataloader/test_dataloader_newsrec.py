@@ -12,7 +12,7 @@ from ebrec.models.newsrec.dataloader import (
     NRMSDataLoader,
 )
 from ebrec.utils.utils_python import time_it
-from torch.utils.data import DataLoader
+
 
 from ebrec.utils.utils_behaviors import create_binary_labels_column
 from ebrec.utils.constants import (

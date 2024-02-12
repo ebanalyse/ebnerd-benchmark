@@ -1,5 +1,9 @@
 from ebrec.utils.utils_python import generate_unique_name
-import polars as pl
+
+try:
+    import polars as pl
+except ImportError:
+    print("polars not available")
 
 
 def map_list_article_id_to_value(

@@ -20,10 +20,8 @@ from ebrec.utils.utils_python import (
 from ebrec.utils.utils_articles_behaviors import map_list_article_id_to_value
 from ebrec.utils.utils_polars import shuffle_rows
 
-
-from models.evaluation.ml_metrics import AucScore
-
-from models.deepctr.utils import save_checkpoint
+from ebrec.evaluation import AucScore
+from ebrec.utils.utils_torch import save_checkpoint
 
 
 @dataclass

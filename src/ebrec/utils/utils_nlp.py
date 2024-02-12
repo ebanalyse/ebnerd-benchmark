@@ -1,10 +1,17 @@
-from torch.utils.data import DataLoader, TensorDataset
-from transformers import AutoTokenizer, AutoModel
 from tqdm import tqdm
 import numpy as np
 import torch
 
 from ebrec.utils.utils_python import get_torch_device
+
+try:
+    from torch.utils.data import DataLoader, TensorDataset
+except ImportError:
+    print("torch not available")
+try:
+    from transformers import AutoTokenizer, AutoModel
+except ImportError:
+    print("transformers not available")
 
 
 def get_transformers_word_embeddings(model: AutoModel):

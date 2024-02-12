@@ -1,4 +1,7 @@
-import polars as pl
+try:
+    import polars as pl
+except ImportError:
+    print("polars not available")
 
 
 def linear_decay_weights(n: int, ascending: bool = True, **kwargs) -> list[float]:

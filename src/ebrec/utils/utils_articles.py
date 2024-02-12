@@ -1,8 +1,11 @@
-from transformers import AutoTokenizer
-import polars as pl
-
 from ebrec.utils.utils_python import create_lookup_dict
+import polars as pl
 from ebrec.utils.constants import DEFAULT_ARTICLE_ID_COL
+
+try:
+    from transformers import AutoTokenizer
+except ImportError:
+    print("transformers not available")
 
 
 def load_article_id_embeddings(

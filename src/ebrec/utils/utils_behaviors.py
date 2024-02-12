@@ -1,6 +1,5 @@
 from typing import Any, Iterable
 from tqdm import tqdm
-import polars as pl
 import warnings
 import datetime
 import inspect
@@ -12,6 +11,7 @@ from ebrec.utils.utils_polars import (
     generate_unique_name,
     shuffle_list_column,
 )
+import polars as pl
 
 from ebrec.utils.constants import (
     DEFAULT_IMPRESSION_TIMESTAMP_COL,

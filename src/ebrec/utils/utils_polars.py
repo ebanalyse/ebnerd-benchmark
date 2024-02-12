@@ -1,9 +1,11 @@
-from pathlib import Path
-import polars as pl
 import numpy as np
-import datetime
 import random
 import ast
+
+try:
+    import polars as pl
+except ImportError:
+    print("polars not available")
 
 
 from ebrec.utils.utils_python import generate_unique_name
@@ -222,7 +224,7 @@ def shuffle_rows(df: pl.DataFrame, seed: int = None) -> pl.DataFrame:
     >>> all([sum(row) == row[0]*3 for row in shuffle_rows(df_, seed=None).iter_rows()])
         False
     """
-    seed = seed if seed is not None else random.randint(1, 1e6)
+    seed = seed if seed is not None else random.randint(1, 1_000_000)
     return df.select(pl.all().shuffle(seed))
 
 

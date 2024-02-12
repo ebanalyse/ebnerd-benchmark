@@ -12,8 +12,6 @@ from ebrec.models.newsrec.dataloader import (
     NRMSDataLoader,
 )
 from ebrec.utils._python import time_it
-
-
 from ebrec.utils._behaviors import create_binary_labels_column
 from ebrec.utils._constants import (
     DEFAULT_HISTORY_ARTICLE_ID_COL,
@@ -27,42 +25,37 @@ from ebrec.utils._constants import (
 from ebrec.models.fastformer.dataloader import FastformerDataset
 from torch.utils.data import DataLoader
 
+TOKEN_COL = "tokens"
 N_SAMPLES = "n"
-TOKEN_COL = "idx"
 BATCH_SIZE = 100
 
 # LOAD DATA:
 PATH_DATA = Path("test/data")
-
 df_articles = (
     pl.scan_parquet(PATH_DATA.joinpath("ebnerd", "articles.parquet"))
     .select(pl.col(DEFAULT_ARTICLE_ID_COL, DEFAULT_CATEGORY_COL))
+    .with_columns(pl.Series(TOKEN_COL, np.random.randint(0, 20, (1, 10))))
     .collect()
 )
-dummy_lookups = np.random.randint(0, 20, (df_articles.shape[0], 10))
-df_articles = df_articles.with_columns(pl.Series(TOKEN_COL, dummy_lookups))
-# =>
 df_history = (
     pl.scan_parquet(PATH_DATA.joinpath("ebnerd", "history.parquet"))
     .select(DEFAULT_USER_COL, DEFAULT_HISTORY_ARTICLE_ID_COL)
     .with_columns(pl.col(DEFAULT_HISTORY_ARTICLE_ID_COL).list.tail(3))
-    .collect()
 )
 df_behaviors = (
     pl.scan_parquet(PATH_DATA.joinpath("ebnerd", "behaviors.parquet"))
     .select(DEFAULT_USER_COL, DEFAULT_INVIEW_ARTICLES_COL, DEFAULT_CLICKED_ARTICLES_COL)
     .with_columns(pl.col(DEFAULT_INVIEW_ARTICLES_COL).list.len().alias(N_SAMPLES))
+    .join(df_history, on=DEFAULT_USER_COL, how="left")
     .collect()
     .pipe(create_binary_labels_column)
-    .join(df_history, on=DEFAULT_USER_COL, how="left")
 )
-
-#
-user_mapping = create_user_id_mapping(df=df_behaviors)
+# => MAPPINGS:
 article_mapping = create_title_mapping(df=df_articles, column=TOKEN_COL)
-# =>
+user_mapping = create_user_id_mapping(df=df_behaviors)
+# => NPRATIO IMPRESSION - SAME LENGTHS:
 df_behaviors_train = df_behaviors.filter(pl.col(N_SAMPLES) == pl.col(N_SAMPLES).min())
-# => ASSERT
+# => FOR TEST-DATALOADER
 label_lengths = df_behaviors[DEFAULT_INVIEW_ARTICLES_COL].list.len().to_list()
 
 
@@ -197,7 +190,6 @@ def test_NAMLDataLoader():
 
 @time_it(True)
 def test_FastformerDataloader():
-
     train_dataloader = DataLoader(
         FastformerDataset(
             behaviors=df_behaviors_train,

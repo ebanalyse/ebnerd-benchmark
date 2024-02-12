@@ -10,33 +10,55 @@ from ebrec.utils._behaviors import create_user_id_mapping
 from ebrec.utils._articles import create_title_mapping
 from ebrec.utils._python import create_lookup_dict
 
-# from newssources.utils_polars import create_lookup_dict
-# from pytest.utils import timer_decorator
+from ebrec.utils._python import time_it
 from tqdm import tqdm
 
-# from models.fastformer.dataloader import FastformerDataset
-# from torch.utils.data import DataLoader
-
-EMBEDDING_NAME = f"title-subtitle-bert-base-multilingual-cased"
-TOKENIZER_NAME = f"title_encode_bert-base-multilingual-cased"
-PATH_DATA = Path("pytest/data")
-
-df_articles = pl.read_parquet(PATH_DATA.joinpath("articles_data_with_emb.parquet"))
-df_behaviors_train = pl.read_parquet(
-    PATH_DATA.joinpath("behaviors_formatted_train.parquet")
-)
-df_behaviors_test = pl.read_parquet(
-    PATH_DATA.joinpath("behaviors_formatted_test.parquet")
+from ebrec.utils._behaviors import create_binary_labels_column
+from ebrec.utils._constants import (
+    DEFAULT_HISTORY_ARTICLE_ID_COL,
+    DEFAULT_CLICKED_ARTICLES_COL,
+    DEFAULT_INVIEW_ARTICLES_COL,
+    DEFAULT_ARTICLE_ID_COL,
+    DEFAULT_CATEGORY_COL,
+    DEFAULT_USER_COL,
 )
 
-BATCH_SIZE = 100
-HISTORY_COLUMN = "article_id_fixed"
-
-label_lengths = df_behaviors_test["labels"].list.len().to_list()
+from ebrec.models.fastformer.dataloader import FastformerDataset
+from torch.utils.data import DataLoader
 
 N_ITERATIONS = 300
+BATCH_SIZE = 100
+TOKEN_COL = "tokens"
+N_SAMPLES = "n"
 
-article_mapping = create_title_mapping(df=df_articles, column=TOKENIZER_NAME)
+# LOAD DATA:
+PATH_DATA = Path("test/data")
+df_articles = (
+    pl.scan_parquet(PATH_DATA.joinpath("ebnerd", "articles.parquet"))
+    .select(pl.col(DEFAULT_ARTICLE_ID_COL, DEFAULT_CATEGORY_COL))
+    .with_columns(pl.Series(TOKEN_COL, np.random.randint(0, 20, (1, 10))))
+    .collect()
+)
+df_history = (
+    pl.scan_parquet(PATH_DATA.joinpath("ebnerd", "history.parquet"))
+    .select(DEFAULT_USER_COL, DEFAULT_HISTORY_ARTICLE_ID_COL)
+    .with_columns(pl.col(DEFAULT_HISTORY_ARTICLE_ID_COL).list.tail(3))
+)
+df_behaviors = (
+    pl.scan_parquet(PATH_DATA.joinpath("ebnerd", "behaviors.parquet"))
+    .select(DEFAULT_USER_COL, DEFAULT_INVIEW_ARTICLES_COL, DEFAULT_CLICKED_ARTICLES_COL)
+    .with_columns(pl.col(DEFAULT_INVIEW_ARTICLES_COL).list.len().alias(N_SAMPLES))
+    .join(df_history, on=DEFAULT_USER_COL, how="left")
+    .collect()
+    .pipe(create_binary_labels_column)
+)
+# => MAPPINGS:
+article_mapping = create_title_mapping(df=df_articles, column=TOKEN_COL)
+user_mapping = create_user_id_mapping(df=df_behaviors)
+# => NPRATIO IMPRESSION - SAME LENGTHS:
+df_behaviors_train = df_behaviors.filter(pl.col(N_SAMPLES) == pl.col(N_SAMPLES).min())
+# => FOR TEST-DATALOADER
+label_lengths = df_behaviors[DEFAULT_INVIEW_ARTICLES_COL].list.len().to_list()
 
 
 def iter_dataloader(dataloader, name: str, iterations: int):
@@ -46,12 +68,12 @@ def iter_dataloader(dataloader, name: str, iterations: int):
 
 
 # ===
-@timer_decorator
+@time_it(True)
 def bomb_NRMSDataLoader():
     dataloader = NRMSDataLoader(
         behaviors=df_behaviors_train,
         article_dict=article_mapping,
-        history_column=HISTORY_COLUMN,
+        history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
         unknown_representation="zeros",
         eval_mode=False,
         batch_size=BATCH_SIZE,
@@ -59,9 +81,9 @@ def bomb_NRMSDataLoader():
     iter_dataloader(dataloader, "NRMS-train", iterations=N_ITERATIONS)
 
     dataloader = NRMSDataLoader(
-        behaviors=df_behaviors_test,
+        behaviors=df_behaviors,
         article_dict=article_mapping,
-        history_column=HISTORY_COLUMN,
+        history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
         unknown_representation="zeros",
         eval_mode=True,
         batch_size=BATCH_SIZE,
@@ -69,7 +91,7 @@ def bomb_NRMSDataLoader():
     iter_dataloader(dataloader, "NRMS-test", iterations=N_ITERATIONS)
 
 
-@timer_decorator
+@time_it(True)
 def bomb_LSTURDataLoader():
     user_mapping = create_user_id_mapping(df=df_behaviors_train)
 
@@ -77,17 +99,17 @@ def bomb_LSTURDataLoader():
         behaviors=df_behaviors_train,
         article_dict=article_mapping,
         user_id_mapping=user_mapping,
-        history_column=HISTORY_COLUMN,
+        history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
         unknown_representation="zeros",
         batch_size=BATCH_SIZE,
     )
     iter_dataloader(dataloader, "LSTUR-train", iterations=N_ITERATIONS)
 
     dataloader = LSTURDataLoader(
-        behaviors=df_behaviors_test,
+        behaviors=df_behaviors,
         article_dict=article_mapping,
         user_id_mapping=user_mapping,
-        history_column=HISTORY_COLUMN,
+        history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
         unknown_representation="zeros",
         batch_size=BATCH_SIZE,
         eval_mode=True,
@@ -96,12 +118,12 @@ def bomb_LSTURDataLoader():
 
 
 # ===
-@timer_decorator
+@time_it(True)
 def bomb_FastformerDataLoader():
     dataloader = DataLoader(
         FastformerDataset(
             behaviors=df_behaviors_train,
-            history_column=HISTORY_COLUMN,
+            history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
             article_dict=article_mapping,
             batch_size=BATCH_SIZE,
             shuffle=True,
@@ -111,11 +133,17 @@ def bomb_FastformerDataLoader():
 
     dataloader = DataLoader(
         FastformerDataset(
-            behaviors=df_behaviors_test,
-            history_column=HISTORY_COLUMN,
+            behaviors=df_behaviors,
+            history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
             article_dict=article_mapping,
             batch_size=BATCH_SIZE,
             shuffle=False,
         )
     )
     iter_dataloader(dataloader, "Fastformer-test", iterations=N_ITERATIONS)
+
+
+if __name__ == "__main__":
+    bomb_NRMSDataLoader()
+    bomb_LSTURDataLoader()
+    bomb_FastformerDataLoader()

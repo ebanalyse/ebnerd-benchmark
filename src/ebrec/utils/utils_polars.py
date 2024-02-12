@@ -3,13 +3,60 @@ import polars as pl
 import numpy as np
 import datetime
 import random
+import ast
+
 
 from ebrec.utils.utils_python import generate_unique_name
 
-from ebrec.utils.constants import DEFAULT_USER_COL, DEFAULT_ARTICLE_ID_COL
-
 
 # NOTE to self; when doing the test function, use the same 'df' for the dynamic / static histories
+def write_txt_file(df: pl.DataFrame, col1: str, col2: str, path: str) -> None:
+    """
+    >>> df = pl.DataFrame({
+            'impression_id': [237, 291, 320],
+            'pred_scores': [[0, 0], [0, 0], [0, 0]]  # Simplified for demonstration
+        })
+    >>> write_prediction_scores(df, "impression_id", "pred_scores", "pred.txt")
+    """
+    data_tuples = ((row[col1], row[col2]) for row in df.to_dicts())
+    with open(path, "w") as file:
+        for impression_id, scores in data_tuples:
+            # Convert the list of scores to a string format
+            scores_str = ", ".join(map(str, scores))
+            # Write the line to the file
+            _ = file.write(f"{impression_id} [{scores_str}]\n")
+
+
+def read_text_file(
+    path, col1: str = "impression_id", col2: str = "pred_scores"
+) -> pl.DataFrame:
+    """
+    >>> df = pl.DataFrame({
+            'impression_id': [237, 291, 320],
+            'pred_scores': [[0, 0], [0, 0], [0, 0]]  # Simplified for demonstration
+        })
+    >>> write_prediction_scores(df, "impression_id", "pred_scores", "pred.txt")
+    >>> read_predictions_scores("pred.txt")
+        shape: (3, 2)
+        ┌───────────────┬─────────────┐
+        │ impression_id ┆ pred_scores │
+        │ ---           ┆ ---         │
+        │ i64           ┆ list[i64]   │
+        ╞═══════════════╪═════════════╡
+        │ 237           ┆ [0, 0]      │
+        │ 291           ┆ [0, 0]      │
+        │ 320           ┆ [0, 0]      │
+        └───────────────┴─────────────┘
+    """
+    # Read and parse the file
+    impression_ids = []
+    pred_scores = []
+    with open(path, "r") as file:
+        for line in file:
+            impression_id_str, scores_str = line.strip().split(" ", 1)
+            impression_ids.append(int(impression_id_str))
+            pred_scores.append(ast.literal_eval(scores_str))
+    return pl.DataFrame({col1: impression_ids, col2: pred_scores})
 
 
 def _check_columns_in_df(df: pl.DataFrame, columns: list[str]) -> None:
@@ -64,6 +111,39 @@ def _validate_equal_list_column_lengths(df: pl.DataFrame, col1: str, col2: str) 
         raise ValueError(
             f"Mismatch in the lengths of the number of items (row-based) between the columns: '{col1}' and '{col2}'. Please ensure equal lengths."
         )
+
+
+def rename_columns(df: pl.DataFrame, map_dict: dict[str, str]) -> pl.DataFrame:
+    """
+    Examples:
+        >>> import polars as pl
+        >>> df = pl.DataFrame({'A': [1, 2], 'B': [3, 4]})
+        >>> map_dict = {'A': 'X', 'B': 'Y'}
+        >>> rename_columns(df, map_dict)
+            shape: (2, 2)
+            ┌─────┬─────┐
+            │ X   ┆ Y   │
+            │ --- ┆ --- │
+            │ i64 ┆ i64 │
+            ╞═════╪═════╡
+            │ 1   ┆ 3   │
+            │ 2   ┆ 4   │
+            └─────┴─────┘
+        >>> rename_columns(df, {"Z" : "P"})
+            shape: (2, 2)
+            ┌─────┬─────┐
+            │ A   ┆ B   │
+            │ --- ┆ --- │
+            │ i64 ┆ i64 │
+            ╞═════╪═════╡
+            │ 1   ┆ 3   │
+            │ 2   ┆ 4   │
+            └─────┴─────┘
+    """
+    map_dict = {key: val for key, val in map_dict.items() if key in df.columns}
+    if len(map_dict):
+        df = df.rename(map_dict)
+    return df
 
 
 def from_dict_to_polars(dictionary: dict) -> pl.DataFrame:
@@ -175,273 +255,7 @@ def keep_unique_values_in_list(df: pl.DataFrame, column: str) -> pl.DataFrame:
             │ [1, 2, 3]   │
             └─────────────┘
     """
-    return df.with_columns(pl.col(column).list.eval(pl.element().unique()))
-
-
-def rank_list_ids_by_list_values(df, id_col: str, value_col: str) -> pl.DataFrame:
-    """
-    Ranks the list elements in the 'id_col' column of the DataFrame based on the corresponding values in the 'value_col' column.
-
-    Args:
-        df (pl.DataFrame): The input DataFrame.
-        id_col (str): The name of the column containing lists of IDs.
-        value_col (str): The name of the column containing values corresponding to the IDs.
-
-
-    Returns:
-        pl.DataFrame: A DataFrame with the 'id_col' column sorted in ascending order based on the 'value_col' column.
-
-    Raise:
-        If id_col and value_col do not have the same number of values in each list.
-
-    Returns:
-        pl.DataFrame: _description_
-    >>> df = pl.DataFrame(
-            {
-                "id": [["a", "b", "c"], ["a", "c", "b"]],
-                "val": [[3, 2, 1], [10, 30, 20]],
-                "h" : [1,2]
-            }
-        )
-    >>> rank_list_ids_by_list_values(df, "id", "val")
-        shape: (2, 3)
-        ┌─────────────────┬──────────────┬─────┐
-        │ id              ┆ val          ┆ h   │
-        │ ---             ┆ ---          ┆ --- │
-        │ list[str]       ┆ list[i64]    ┆ i64 │
-        ╞═════════════════╪══════════════╪═════╡
-        │ ["c", "b", "a"] ┆ [1, 2, 3]    ┆ 1   │
-        │ ["a", "b", "c"] ┆ [10, 20, 30] ┆ 2   │
-        └─────────────────┴──────────────┴─────┘
-    """
-    return df.with_columns(
-        df.lazy()
-        .select(pl.col(id_col), pl.col(value_col))
-        .with_row_count("row_nr")
-        .explode(pl.col(id_col, value_col))
-        .sort(by=value_col)
-        .group_by("row_nr")
-        .agg(id_col, value_col)
-        .sort("row_nr")
-        .drop("row_nr")
-        .collect()
-    )
-
-
-def filter_datetime_interval(
-    df: pl.DataFrame, datetimes: list[datetime.datetime], column: str
-) -> pl.DataFrame:
-    """
-    Example:
-    >>> import polars as pl
-    >>> import datetime
-    >>> df = pl.DataFrame(
-            {
-                "first_page_time": [
-                    datetime.datetime(2021, 1, day=1),
-                    datetime.datetime(2021, 1, day=2),
-                    datetime.datetime(2021, 1, day=3),
-                    datetime.datetime(2021, 1, day=4),
-                ],
-                "data": [1, 2, 3, 4],
-            }
-        )
-    >>> start_end = [datetime.datetime(2021, 1, day=1), datetime.datetime(2021, 1, day=3)]
-    >>> filter_datetime_interval(df, start_end, column="first_page_time")
-        shape: (2, 2)
-        ┌─────────────────────┬──────┐
-        │ first_page_time     ┆ data │
-        │ ---                 ┆ ---  │
-        │ datetime[μs]        ┆ i64  │
-        ╞═════════════════════╪══════╡
-        │ 2021-01-01 00:00:00 ┆ 1    │
-        │ 2021-01-02 00:00:00 ┆ 2    │
-        └─────────────────────┴──────┘
-    >>> filter_datetime_interval(df, start_end[::-1], column="first_page_time")
-        ValueError: Start datetime must be earlier than end datetime. Input: [datetime.datetime(2021, 1, 3, 0, 0), datetime.datetime(2021, 1, 1, 0, 0)]
-    """
-    if datetimes[0] > datetimes[1]:
-        raise ValueError(
-            f"Start datetime must be earlier than end datetime. Input: {datetimes}"
-        )
-    return df.filter(pl.col(column) >= datetimes[0]).filter(
-        pl.col(column) < datetimes[1]
-    )
-
-
-def split_list_to_columns(df: pl.DataFrame, column: str) -> pl.DataFrame:
-    """
-    Converts a column of lists containing values to individual columns with the list values.
-
-    Args:
-        df (pl.DataFrame): The input DataFrame containing the list column.
-        column (str): The name of the column to convert.
-
-    Returns:
-        pl.DataFrame: Transformed dataframe.
-
-    Example:
-    >>> df = pl.DataFrame({
-            "list_col": [
-                [1, 2, 3],
-                [4, 5, 6],
-                [7, 8, 9],
-                [3, 5, 7],
-            ],
-            "other_col": [1, 2, 3, 4]
-        })
-    >>> split_list_to_columns(df, column="list_col")
-        shape: (4, 4)
-        ┌─────────┬─────────┬─────────┬───────────┐
-        │ field_0 ┆ field_1 ┆ field_2 ┆ other_col │
-        │ ---     ┆ ---     ┆ ---     ┆ ---       │
-        │ i64     ┆ i64     ┆ i64     ┆ i64       │
-        ╞═════════╪═════════╪═════════╪═══════════╡
-        │ 1       ┆ 2       ┆ 3       ┆ 1         │
-        │ 4       ┆ 5       ┆ 6       ┆ 2         │
-        │ 7       ┆ 8       ┆ 9       ┆ 3         │
-        │ 3       ┆ 5       ┆ 7       ┆ 4         │
-        └─────────┴─────────┴─────────┴───────────┘
-    """
-    return df.with_columns(pl.col(column).list.to_struct()).unnest(column)
-
-
-def compute_nested_lists_mean(
-    df: pl.DataFrame, column: str, fill_null: list[float] = None
-) -> pl.DataFrame:
-    """
-    Computes the mean of a column containing lists of float values and adds the result
-    as a new column to the input DataFrame.
-
-    Be aware, the method can handle different list lengths for 'column', however, zeros vectors should
-    be removed prior.
-
-    Args:
-        df (pl.DataFrame): The input DataFrame.
-        column (str): The name of the column containing lists of float values.
-
-    Returns:
-        pl.DataFrame: DataFrame with the mean value of the input column
-
-    Example:
-    >>> df = pl.DataFrame(
-            {
-                "col1": [
-                    [[1, 2], [1, 3], [1, 4]],
-                    [[1, 3], [2, 4], [3, 5]],
-                    [[2, 4], [4, 6]],
-                    None,
-                ],
-                "col2": [4, 5, 6, 7],
-            }
-        )
-    >>> df.dtypes
-        [List(List(Int64)), Int64]
-    >>> compute_nested_lists_mean(df, column="col1")
-        shape: (4, 2)
-        ┌──────────────┬──────┐
-        │ col1         ┆ col2 │
-        │ ---          ┆ ---  │
-        │ list[f64]    ┆ i64  │
-        ╞══════════════╪══════╡
-        │ [1.0, 3.0]   ┆ 4    │
-        │ [2.0, 4.0]   ┆ 5    │
-        │ [3.0, 5.0]   ┆ 6    │
-        │ [null, null] ┆ 7    │
-        └──────────────┴──────┘
-    >>> compute_nested_lists_mean(df, column="col1", fill_null=[0, 0])
-        shape: (4, 2)
-        ┌────────────┬──────┐
-        │ col1       ┆ col2 │
-        │ ---        ┆ ---  │
-        │ list[f64]  ┆ i64  │
-        ╞════════════╪══════╡
-        │ [1.0, 3.0] ┆ 4    │
-        │ [2.0, 4.0] ┆ 5    │
-        │ [3.0, 5.0] ┆ 6    │
-        │ [0.0, 0.0] ┆ 7    │
-        └────────────┴──────┘
-    """
-    a = df.lazy().select(column).with_row_count("row_nr").explode(column).collect()
-    # =>
-    if fill_null is not None:
-        a = a.with_columns(pl.col(column).fill_null(fill_null))
-    # =>
-    a = split_list_to_columns(a, column)
-    # =>
-    a = a.lazy().group_by("row_nr").mean().drop("row_nr")
-    # =>
-    a = a.select(pl.concat_list(a.columns).alias(column)).collect()
-    return df.with_columns(a)
-
-
-def compute_nested_lists_sum(
-    df: pl.DataFrame, column: str, fill_null: list[float] = None
-) -> pl.DataFrame:
-    """
-    Computes the sum of a column containing lists of float values and adds the result
-    as a new column to the input DataFrame.
-
-    Be aware, the method can handle different list lengths for 'column', however, zeros vectors should
-    be removed prior.
-
-    Args:
-        df (pl.DataFrame): The input DataFrame.
-        column (str): The name of the column containing lists of float values.
-
-    Returns:
-        pl.DataFrame: DataFrame with the sum value of the input column
-
-    Example:
-    >>> df = pl.DataFrame(
-            {
-                "col1": [
-                    [[1, 2], [1, 3], [1, 4]],
-                    [[1, 3], [2, 4], [3, 5]],
-                    [[2, 4], [4, 6]],
-                    None,
-                ],
-                "col2": [4, 5, 6, 7],
-            }
-        )
-    >>> df.dtypes
-        [List(List(Int64)), Int64]
-    >>> compute_nested_lists_sum(df, column="col1")
-        shape: (4, 2)
-        ┌───────────┬──────┐
-        │ col1      ┆ col2 │
-        │ ---       ┆ ---  │
-        │ list[i64] ┆ i64  │
-        ╞═══════════╪══════╡
-        │ [3, 9]    ┆ 4    │
-        │ [6, 12]   ┆ 5    │
-        │ [6, 10]   ┆ 6    │
-        │ [0, 0]    ┆ 7    │
-        └───────────┴──────┘
-    >>> compute_nested_lists_mean(df, column="col1", fill_null=[1, 1])
-        shape: (4, 2)
-        ┌────────────┬──────┐
-        │ col1       ┆ col2 │
-        │ ---        ┆ ---  │
-        │ list[f64]  ┆ i64  │
-        ╞════════════╪══════╡
-        │ [1.0, 3.0] ┆ 4    │
-        │ [2.0, 4.0] ┆ 5    │
-        │ [3.0, 5.0] ┆ 6    │
-        │ [1.0, 1.0] ┆ 7    │
-        └────────────┴──────┘
-    """
-    a = df.select(column).with_row_count("row_nr").explode(column)
-    # =>
-    if fill_null is not None:
-        a = a.with_columns(pl.col(column).fill_null(fill_null))
-    # =>
-    a = split_list_to_columns(a, column)
-    # =>
-    a = a.group_by("row_nr").sum().drop("row_nr")
-    # =>
-    a = a.select(pl.concat_list(a.columns).alias(column))
-    return df.with_columns(a)
+    return df.with_columns(pl.col(column).list.unique())
 
 
 def filter_minimum_lengths_from_list(
@@ -490,7 +304,7 @@ def filter_minimum_lengths_from_list(
         └─────────┴─────────────────┘
     """
     return (
-        df.filter(df[column].list.len() >= n)
+        df.filter(pl.col(column).list.len() >= n)
         if column in df and n is not None and n > 0
         else df
     )
@@ -543,64 +357,9 @@ def filter_maximum_lengths_from_list(
         └─────────┴─────────────────┘
     """
     return (
-        df.filter(df[column].list.len() <= n)
+        df.filter(pl.col(column).list.len() <= n)
         if column in df and n is not None and n > 0
         else df
-    )
-
-
-def repeat_by_list_values(df: pl.DataFrame, repeat_column: str) -> pl.DataFrame:
-    """
-    This function can handle when the element to repeat is a list, as this is not supported at the moment.
-
-    Args:
-        df (pl.DataFrame): The input DataFrame.
-        repeat_column (str): The name of the column containing the list values to repeat.
-
-    Returns:
-        pl.DataFrame: A new DataFrame with the list values repeated based on the corresponding 'repeat_column'.
-
-    >>> df = (
-            pl.DataFrame({
-                'ID' : [100, 200],
-                'val': [["a", "b", "c"], ["a", "b"]],
-                'repeat_by': [2, 3],
-            })
-        )
-
-    ## Polars does support the 'repeat_by' for intergers:
-    >>> df.with_columns(pl.col("ID").repeat_by("repeat_by"))
-        shape: (2, 3)
-        ┌─────────────────┬─────────────────┬───────────┐
-        │ ID              ┆ val             ┆ repeat_by │
-        │ ---             ┆ ---             ┆ ---       │
-        │ list[i64]       ┆ list[str]       ┆ i64       │
-        ╞═════════════════╪═════════════════╪═══════════╡
-        │ [100, 100]      ┆ ["a", "b", "c"] ┆ 2         │
-        │ [200, 200, 200] ┆ ["a", "b"]      ┆ 3         │
-        └─────────────────┴─────────────────┴───────────┘
-
-    ## But not for list
-    >>> df.with_columns(pl.col("val").repeat_by("repeat_by"))
-        (...): `repeat_by` operation not supported for dtype `list[str]`
-
-    ## This is where 'repeat_list_values' comes in:
-    >>> repeat_list_values(df, "repeat_by")
-        shape: (5, 3)
-        ┌─────┬─────────────────┬───────────┐
-        │ ID  ┆ val             ┆ repeat_by │
-        │ --- ┆ ---             ┆ ---       │
-        │ i64 ┆ list[str]       ┆ i64       │
-        ╞═════╪═════════════════╪═══════════╡
-        │ 100 ┆ ["a", "b", "c"] ┆ 2         │
-        │ 100 ┆ ["a", "b", "c"] ┆ 2         │
-        │ 200 ┆ ["a", "b"]      ┆ 3         │
-        │ 200 ┆ ["a", "b"]      ┆ 3         │
-        │ 200 ┆ ["a", "b"]      ┆ 3         │
-        └─────┴─────────────────┴───────────┘
-    """
-    return df.with_columns(pl.col(repeat_column).repeat_by(repeat_column)).explode(
-        repeat_column
     )
 
 
@@ -643,6 +402,103 @@ def drop_nulls_from_list(df: pl.DataFrame, column: str) -> pl.DataFrame:
         └─────────┴────────────────────┘
     """
     return df.with_columns(pl.col(column).list.eval(pl.element().drop_nulls()))
+
+
+def filter_list_elements(df: pl.DataFrame, column: str, ids: list[any]) -> pl.DataFrame:
+    """
+    Removes list elements from a specified column in a Polars DataFrame that are not found in a given list of identifiers.
+
+    Args:
+        df (pl.DataFrame): The Polars DataFrame to process.
+        column (str): The name of the column from which to remove unknown elements.
+        ids (list[any]): A list of identifiers to retain in the specified column. Elements not in this list will be removed.
+
+    Returns:
+        pl.DataFrame: A new Polars DataFrame with the same structure as the input DataFrame, but with elements not found in
+                    the 'ids' list removed from the specified 'column'.
+
+    Examples:
+    >>> df = pl.DataFrame({"A": [1, 2, 3, 4, 5], "B": [[1, 3], [3, 4], None, [7, 8], [9, 10]]})
+    >>> ids = [1, 3, 5, 7]
+    >>> filter_list_elements(df.lazy(), "B", ids).collect()
+        shape: (5, 2)
+        ┌─────┬───────────┐
+        │ A   ┆ B         │
+        │ --- ┆ ---       │
+        │ i64 ┆ list[i64] │
+        ╞═════╪═══════════╡
+        │ 1   ┆ [1, 3]    │
+        │ 2   ┆ [3]       │
+        │ 3   ┆ null      │
+        │ 4   ┆ [7]       │
+        │ 5   ┆ null      │
+        └─────┴───────────┘
+    """
+    GROUPBY_COL = "_groupby"
+    COLUMNS = df.columns
+    df = df.with_row_index(GROUPBY_COL)
+    df_ = (
+        df.select(pl.col(GROUPBY_COL, column))
+        .drop_nulls()
+        .explode(column)
+        .filter(pl.col(column).is_in(ids))
+        .group_by(GROUPBY_COL)
+        .agg(column)
+    )
+    return df.drop(column).join(df_, on=GROUPBY_COL, how="left").select(COLUMNS)
+
+
+def filter_elements(df: pl.DataFrame, column: str, ids: list[any]) -> pl.DataFrame:
+    """
+    Removes elements from a specified column in a Polars DataFrame that are not found in a given list of identifiers.
+
+    Args:
+        df (pl.DataFrame): The Polars DataFrame to process.
+        column (str): The name of the column from which to remove unknown elements.
+        ids (list[any]): A list of identifiers to retain in the specified column. Elements not in this list will be removed.
+
+    Returns:
+        pl.DataFrame: A new Polars DataFrame with the same structure as the input DataFrame, but with elements not found in
+                    the 'ids' list removed from the specified 'column'.
+
+    Examples:
+    >>> df = pl.DataFrame({"A": [1, 2, 3, 4, 5], "B": [[1, 3], [3, 4], None, [7, 8], [9, 10]]})
+        shape: (5, 2)
+        ┌─────┬───────────┐
+        │ A   ┆ B         │
+        │ --- ┆ ---       │
+        │ i64 ┆ list[i64] │
+        ╞═════╪═══════════╡
+        │ 1   ┆ [1, 3]    │
+        │ 2   ┆ [3, 4]    │
+        │ 3   ┆ null      │
+        │ 4   ┆ [7, 8]    │
+        │ 5   ┆ [9, 10]   │
+        └─────┴───────────┘
+    >>> ids = [1, 3, 5, 7]
+    >>> filter_elements(df.lazy(), "A", ids).collect()
+        shape: (5, 2)
+        ┌──────┬───────────┐
+        │ A    ┆ B         │
+        │ ---  ┆ ---       │
+        │ i64  ┆ list[i64] │
+        ╞══════╪═══════════╡
+        │ 1    ┆ [1, 3]    │
+        │ null ┆ [3, 4]    │
+        │ 3    ┆ null      │
+        │ null ┆ [7, 8]    │
+        │ 5    ┆ [9, 10]   │
+        └──────┴───────────┘
+    """
+    GROUPBY_COL = "_groupby"
+    COLUMNS = df.columns
+    df = df.with_row_index(GROUPBY_COL)
+    df_ = (
+        df.select(pl.col(GROUPBY_COL, column))
+        .drop_nulls()
+        .filter(pl.col(column).is_in(ids))
+    )
+    return df.drop(column).join(df_, on=GROUPBY_COL, how="left").select(COLUMNS)
 
 
 def concat_str_columns(df: pl.DataFrame, columns: list[str]) -> pl.DataFrame:
@@ -688,38 +544,7 @@ def filter_empty_text_column(df: pl.DataFrame, column: str) -> pl.DataFrame:
         │ Bob   ┆ 30  │
         └───────┴─────┘
     """
-    return df.filter(df[column].str.lengths() > 0)
-
-
-def cast_datetime(df: pl.DataFrame, column: str, **kwargs) -> pl.DataFrame:
-    """
-    >>> import datetime
-    >>> from zoneinfo import ZoneInfo
-    >>> df = pl.DataFrame(
-            {
-                "id": [1, 2],
-                "time": [
-                    datetime.datetime(2022, 10, 26, 13, 46, 48, tzinfo=ZoneInfo(key="UTC")),
-                    datetime.datetime(2022, 10, 26, 13, 46, 57, tzinfo=ZoneInfo(key="UTC")),
-                ],
-            }
-        )
-    >>> cast_datetime(df, "time", **{"time_unit": "us"})
-        shape: (2, 2)
-        ┌─────┬─────────────────────┐
-        │ id  ┆ time                │
-        │ --- ┆ ---                 │
-        │ i64 ┆ datetime[μs]        │
-        ╞═════╪═════════════════════╡
-        │ 1   ┆ 2022-10-26 13:46:48 │
-        │ 2   ┆ 2022-10-26 13:46:57 │
-        └─────┴─────────────────────┘
-    """
-    return (
-        df.with_columns(pl.col(column).cast(pl.Utf8).str.to_datetime(**kwargs))
-        if column in df
-        else df
-    )
+    return df.filter(pl.col(column).str.lengths() > 0)
 
 
 def shuffle_list_column(
@@ -740,7 +565,7 @@ def shuffle_list_column(
     >>> df = pl.DataFrame(
             {
                 "id": [1, 2, 3],
-                "list_col": [["a-", "b-", "c-"], ["a#", "b#", "c#"], ["a@", "b@", "c@"]],
+                "list_col": [["a-", "b-", "c-"], ["a#", "b#"], ["a@", "b@", "c@"]],
                 "rdn": ["h", "e", "y"],
             }
         )
@@ -752,8 +577,8 @@ def shuffle_list_column(
         │ i64 ┆ list[str]          ┆ str │
         ╞═════╪════════════════════╪═════╡
         │ 1   ┆ ["c-", "b-", "a-"] ┆ h   │
-        │ 2   ┆ ["a#", "b#", "c#"] ┆ e   │
-        │ 3   ┆ ["c@", "b@", "a@"] ┆ y   │
+        │ 2   ┆ ["a#", "b#"]       ┆ e   │
+        │ 3   ┆ ["b@", "c@", "a@"] ┆ y   │
         └─────┴────────────────────┴─────┘
 
     No seed:
@@ -765,8 +590,8 @@ def shuffle_list_column(
         │ i64 ┆ list[str]          ┆ str │
         ╞═════╪════════════════════╪═════╡
         │ 1   ┆ ["b-", "a-", "c-"] ┆ h   │
-        │ 2   ┆ ["a#", "c#", "b#"] ┆ e   │
-        │ 3   ┆ ["b@", "c@", "a@"] ┆ y   │
+        │ 2   ┆ ["a#", "b#"]       ┆ e   │
+        │ 3   ┆ ["a@", "c@", "b@"] ┆ y   │
         └─────┴────────────────────┴─────┘
 
     Test_:

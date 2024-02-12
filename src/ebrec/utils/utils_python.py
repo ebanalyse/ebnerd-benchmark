@@ -6,30 +6,30 @@ import datetime
 import torch
 import time
 import json
+import yaml
 import time
 
 
 def read_json_file(file_path: str) -> dict:
     with open(file_path) as file:
-        data = json.load(file)
-    return data
+        return json.load(file)
 
 
-def write_json_file(dictionary: dict, json_path: str) -> None:
-    Path(json_path).parent.mkdir(parents=True, exist_ok=True)
-    with open(json_path, "w") as file:
+def write_json_file(dictionary: dict, path: str) -> None:
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w") as file:
         json.dump(dictionary, file)
 
 
-def convert_to_float64(data):
-    if isinstance(data, dict):
-        return {key: convert_to_float64(value) for key, value in data.items()}
-    elif isinstance(data, list):
-        return [convert_to_float64(item) for item in data]
-    elif isinstance(data, np.float32):
-        return np.float64(data)
-    else:
-        return data
+def read_yaml_file(path: str) -> dict:
+    with open(path, "r") as file:
+        return yaml.safe_load(file)
+
+
+def write_yaml_file(dictionary: dict, path: str) -> None:
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w") as file:
+        yaml.dump(dictionary, file, default_flow_style=False)
 
 
 def time_it(enable=True):

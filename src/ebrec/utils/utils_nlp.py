@@ -4,7 +4,7 @@ from tqdm import tqdm
 import numpy as np
 import torch
 
-from newssources.utils import get_torch_device
+from ebrec.utils.utils_python import get_torch_device
 
 
 def get_transformers_word_embeddings(model: AutoModel):

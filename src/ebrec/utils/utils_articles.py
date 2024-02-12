@@ -2,18 +2,17 @@ from transformers import AutoTokenizer
 import polars as pl
 
 from ebrec.utils.utils_python import create_lookup_dict
-
-from ebrec.utils.constants import DEFAULT_ARTICLE_ID_COL, DEFAULT_SUBCATEGORY_COL
-
-from newssources.constants import ARTICLE_ID, SUBCATEGORY
+from ebrec.utils.constants import DEFAULT_ARTICLE_ID_COL
 
 
-def load_article_id_embeddings(df: pl.DataFrame, path: str) -> pl.DataFrame:
+def load_article_id_embeddings(
+    df: pl.DataFrame, path: str, item_col: str = DEFAULT_ARTICLE_ID_COL
+) -> pl.DataFrame:
     """Load embeddings artifacts and join to articles on 'article_id'
     Args:
         path (str): Path to document embeddings
     """
-    return df.join(pl.read_parquet(path), on=ARTICLE_ID, how="left")
+    return df.join(pl.read_parquet(path), on=item_col, how="left")
 
 
 def create_title_mapping(

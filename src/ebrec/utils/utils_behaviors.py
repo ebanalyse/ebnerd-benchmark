@@ -178,6 +178,46 @@ def filter_read_times(df, n: int, column: str) -> pl.DataFrame:
     )
 
 
+def unique_article_ids_in_behaviors(
+    df: pl.DataFrame,
+    col: str = "ids",
+    item_col: str = DEFAULT_ARTICLE_ID_COL,
+    inview_col: str = DEFAULT_INVIEW_ARTICLES_COL,
+    clicked_col: str = DEFAULT_CLICKED_ARTICLES_COL,
+) -> pl.Series:
+    """
+    Examples:
+        >>> df = pl.DataFrame({
+                DEFAULT_ARTICLE_ID_COL: [1, 2, 3, 4],
+                DEFAULT_INVIEW_ARTICLES_COL: [[2, 3], [1, 4], [4], [1, 2, 3]],
+                DEFAULT_CLICKED_ARTICLES_COL: [[], [2], [3, 4], [1]],
+            })
+        >>> unique_article_ids_in_behaviors(df.lazy()).sort()
+            [
+                1
+                2
+                3
+                4
+            ]
+    """
+    df = df.lazy()
+    return (
+        (
+            pl.concat(
+                (
+                    df.select(pl.col(item_col).unique().alias(col)),
+                    df.select(pl.col(inview_col).explode().unique().alias(col)),
+                    df.select(pl.col(clicked_col).explode().unique().alias(col)),
+                )
+            )
+            .drop_nulls()
+            .unique()
+        )
+        .collect()
+        .to_series()
+    )
+
+
 def add_known_user_column(
     df: pl.DataFrame,
     known_users: Iterable[int],
@@ -1049,8 +1089,8 @@ def add_session_id_and_next_items(
 
     for df_user in tqdm(
         df.select(select_columns).partition_by(by=user_col),
-        disable=kwargs,
-        ncols=kwargs,
+        disable=kwargs.get("disable", False),
+        ncols=kwargs.get("ncols", 80),
     ):
         df_session = (
             df_user.sort(timestamp_col)

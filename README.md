@@ -28,6 +28,9 @@ tensorflow-macos; sys_platform == 'darwin'
 ```
 
 
-
 # Algorithms
 (...)
+
+Model | Description | Examples
+---------- | ---------- | ----------
+NRMS | See HERE | Notebook

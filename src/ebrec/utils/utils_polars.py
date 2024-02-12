@@ -1,6 +1,7 @@
 from pathlib import Path
 import polars as pl
 import numpy as np
+import datetime
 import random
 
 from ebrec.utils.utils_python import generate_unique_name
@@ -224,6 +225,47 @@ def rank_list_ids_by_list_values(df, id_col: str, value_col: str) -> pl.DataFram
         .sort("row_nr")
         .drop("row_nr")
         .collect()
+    )
+
+
+def filter_datetime_interval(
+    df: pl.DataFrame, datetimes: list[datetime.datetime], column: str
+) -> pl.DataFrame:
+    """
+    Example:
+    >>> import polars as pl
+    >>> import datetime
+    >>> df = pl.DataFrame(
+            {
+                "first_page_time": [
+                    datetime.datetime(2021, 1, day=1),
+                    datetime.datetime(2021, 1, day=2),
+                    datetime.datetime(2021, 1, day=3),
+                    datetime.datetime(2021, 1, day=4),
+                ],
+                "data": [1, 2, 3, 4],
+            }
+        )
+    >>> start_end = [datetime.datetime(2021, 1, day=1), datetime.datetime(2021, 1, day=3)]
+    >>> filter_datetime_interval(df, start_end, column="first_page_time")
+        shape: (2, 2)
+        ┌─────────────────────┬──────┐
+        │ first_page_time     ┆ data │
+        │ ---                 ┆ ---  │
+        │ datetime[μs]        ┆ i64  │
+        ╞═════════════════════╪══════╡
+        │ 2021-01-01 00:00:00 ┆ 1    │
+        │ 2021-01-02 00:00:00 ┆ 2    │
+        └─────────────────────┴──────┘
+    >>> filter_datetime_interval(df, start_end[::-1], column="first_page_time")
+        ValueError: Start datetime must be earlier than end datetime. Input: [datetime.datetime(2021, 1, 3, 0, 0), datetime.datetime(2021, 1, 1, 0, 0)]
+    """
+    if datetimes[0] > datetimes[1]:
+        raise ValueError(
+            f"Start datetime must be earlier than end datetime. Input: {datetimes}"
+        )
+    return df.filter(pl.col(column) >= datetimes[0]).filter(
+        pl.col(column) < datetimes[1]
     )
 
 

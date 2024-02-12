@@ -13,7 +13,7 @@ from ebrec.utils._polars import (
 )
 import polars as pl
 
-from ebrec.utils.constants import (
+from ebrec.utils._constants import (
     DEFAULT_IMPRESSION_TIMESTAMP_COL,
     DEFAULT_CLICKED_ARTICLES_COL,
     DEFAULT_INVIEW_ARTICLES_COL,
@@ -44,7 +44,7 @@ def create_binary_labels_column(
         pl.DataFrame: A new DataFrame with an additional "labels" column.
 
     Examples:
-    >>> from ebrec.utils.constants import (
+    >>> from ebrec.utils._constants import (
             DEFAULT_CLICKED_ARTICLES_COL,
             DEFAULT_INVIEW_ARTICLES_COL,
             DEFAULT_LABELS_COL,
@@ -130,7 +130,7 @@ def filter_minimum_negative_samples(
     clicked_col: str = DEFAULT_CLICKED_ARTICLES_COL,
 ) -> pl.DataFrame:
     """
-    >>> from ebrec.utils.constants import DEFAULT_CLICKED_ARTICLES_COL, DEFAULT_INVIEW_ARTICLES_COL
+    >>> from ebrec.utils._constants import DEFAULT_CLICKED_ARTICLES_COL, DEFAULT_INVIEW_ARTICLES_COL
     >>> df = pl.DataFrame(
             {
                 DEFAULT_INVIEW_ARTICLES_COL: [[1, 2, 3], [1], [1, 2, 3]],
@@ -269,7 +269,7 @@ def sample_article_ids(
         IDs in the specified column replaced by a list of `n` sampled article IDs.
 
     Examples:
-    >>> from ebrec.utils.constants import DEFAULT_INVIEW_ARTICLES_COL
+    >>> from ebrec.utils._constants import DEFAULT_INVIEW_ARTICLES_COL
     >>> df = pl.DataFrame(
             {
                 "clicked": [
@@ -359,7 +359,7 @@ def remove_positives_from_inview(
         pl.DataFrame: A new DataFrame with only negative article IDs retained.
 
     Examples:
-    >>> from ebrec.utils.constants import DEFAULT_INVIEW_ARTICLES_COL, DEFAULT_CLICKED_ARTICLES_COL
+    >>> from ebrec.utils._constants import DEFAULT_INVIEW_ARTICLES_COL, DEFAULT_CLICKED_ARTICLES_COL
     >>> df = pl.DataFrame(
             {
                 "user_id": [1, 1, 2],
@@ -443,7 +443,7 @@ def sampling_strategy_wu2019(
         ValueError: If the input DataFrame does not contain the necessary columns.
 
     Examples:
-    >>> from ebrec.utils.constants import DEFAULT_CLICKED_ARTICLES_COL, DEFAULT_INVIEW_ARTICLES_COL
+    >>> from ebrec.utils._constants import DEFAULT_CLICKED_ARTICLES_COL, DEFAULT_INVIEW_ARTICLES_COL
     >>> import polars as pl
     >>> df = pl.DataFrame(
             {
@@ -656,7 +656,7 @@ def create_dynamic_history(
         ValueError: If the input DataFrame does not contain columns 'user_id', 'article_id', and 'first_page_time'.
 
     Examples:
-    >>> from ebrec.utils.constants import (
+    >>> from ebrec.utils._constants import (
             DEFAULT_IMPRESSION_TIMESTAMP_COL,
             DEFAULT_ARTICLE_ID_COL,
             DEFAULT_USER_COL,
@@ -751,7 +751,7 @@ def create_fixed_history(
         ValueError: If the input dataframe does not contain the required columns.
 
     Examples:
-        >>> from ebrec.utils.constants import (
+        >>> from ebrec.utils._constants import (
                 DEFAULT_IMPRESSION_TIMESTAMP_COL,
                 DEFAULT_ARTICLE_ID_COL,
                 DEFAULT_USER_COL,
@@ -865,7 +865,7 @@ def create_fixed_history_aggr_columns(
         ValueError: If the input dataframe does not contain the required columns.
 
     Examples:
-        >>> from ebrec.utils.constants import (
+        >>> from ebrec.utils._constants import (
                 DEFAULT_IMPRESSION_TIMESTAMP_COL,
                 DEFAULT_ARTICLE_ID_COL,
                 DEFAULT_READ_TIME_COL,
@@ -1026,7 +1026,7 @@ def add_session_id_and_next_items(
         pl.DataFrame: A modified DataFrame with added session IDs and 'next_clicked' features.
 
     Examples:
-        >>> from ebrec.utils.constants import (
+        >>> from ebrec.utils._constants import (
                 DEFAULT_IMPRESSION_TIMESTAMP_COL,
                 DEFAULT_ARTICLE_ID_COL,
                 DEFAULT_USER_COL,

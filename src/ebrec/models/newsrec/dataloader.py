@@ -9,7 +9,7 @@ from ebrec.utils._python import (
     make_lookup_objects,
 )
 
-from ebrec.utils.constants import (
+from ebrec.utils._constants import (
     DEFAULT_INVIEW_ARTICLES_COL,
     DEFAULT_LABELS_COL,
     DEFAULT_USER_COL,

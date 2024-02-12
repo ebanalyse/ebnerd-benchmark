@@ -15,7 +15,7 @@ from ebrec.utils._python import time_it
 
 
 from ebrec.utils._behaviors import create_binary_labels_column
-from ebrec.utils.constants import (
+from ebrec.utils._constants import (
     DEFAULT_HISTORY_ARTICLE_ID_COL,
     DEFAULT_CLICKED_ARTICLES_COL,
     DEFAULT_INVIEW_ARTICLES_COL,

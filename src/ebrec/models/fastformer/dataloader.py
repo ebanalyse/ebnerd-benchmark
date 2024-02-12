@@ -10,7 +10,7 @@ import torch.optim as optim
 import torch.nn as nn
 import torch
 
-from ebrec.utils.constants import DEFAULT_INVIEW_ARTICLES_COL, DEFAULT_LABELS_COL
+from ebrec.utils._constants import DEFAULT_INVIEW_ARTICLES_COL, DEFAULT_LABELS_COL
 
 from ebrec.utils._python import (
     repeat_by_list_values_from_matrix,

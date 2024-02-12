@@ -43,13 +43,16 @@ class FastformerDataset(Dataset):
     shuffle: bool = True
     device: str = "cpu"
     seed: int = None
+    labels_col: str = DEFAULT_LABELS_COL
+    inview_col: str = DEFAULT_INVIEW_ARTICLES_COL
+    n_samples_col: str = "n_samples"
 
     def __post_init__(self):
         self.unknown_index = [0]
         if self.shuffle:
             self.behaviors = shuffle_rows(self.behaviors, seed=self.seed)
         self.behaviors = self.behaviors.with_columns(
-            pl.col(LABELS).list.len().alias("n_samples")
+            pl.col(self.labels_col).list.len().alias(self.n_samples_col)
         )
         self.lookup_indexes, self.lookup_matrix = make_lookup_objects(
             self.article_dict, unknown_representation="zeros"
@@ -82,7 +85,7 @@ class FastformerDataset(Dataset):
             batch = shuffle_rows(batch, seed=self.seed)
         # =>
         x = (
-            batch.drop(LABELS)
+            batch.drop(self.labels_col)
             .pipe(
                 map_list_article_id_to_value,
                 behaviors_column=self.history_column,
@@ -91,13 +94,13 @@ class FastformerDataset(Dataset):
             )
             .pipe(
                 map_list_article_id_to_value,
-                behaviors_column=INVIEW_ARTICLES,
+                behaviors_column=self.inview_col,
                 mapping=self.lookup_indexes,
                 fill_nulls=self.unknown_index,
             )
         )
         # =>
-        repeats = np.array(batch["n_samples"])
+        repeats = np.array(batch[self.n_samples_col])
         # =>
         history_input = repeat_by_list_values_from_matrix(
             input_array=x[self.history_column].to_list(),
@@ -105,12 +108,12 @@ class FastformerDataset(Dataset):
             repeats=repeats,
         ).squeeze(2)
         # =>
-        candidate_input = self.lookup_matrix[x[INVIEW_ARTICLES].explode().to_list()]
+        candidate_input = self.lookup_matrix[x[self.inview_col].explode().to_list()]
         # =>
         history_input = torch.Tensor(history_input).type(torch.int).to(self.device)
         candidate_input = torch.Tensor(candidate_input).type(torch.int).to(self.device)
         y = (
-            torch.Tensor(batch[LABELS].explode())
+            torch.Tensor(batch[self.labels_col].explode())
             .view(-1, 1)
             .type(torch.float)
             .to(self.device)

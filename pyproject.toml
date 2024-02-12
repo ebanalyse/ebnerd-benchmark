@@ -24,3 +24,4 @@ dependencies = [
 # pip install "my_project[extras]"
 # pip install -e .'[notebooks]'
 notebooks = ["transformers"]
+tests =["pytest"]

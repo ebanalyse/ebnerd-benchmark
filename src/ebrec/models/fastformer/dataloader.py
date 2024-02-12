@@ -10,25 +10,17 @@ import torch.optim as optim
 import torch.nn as nn
 import torch
 
-from newssources.constants import (
-    CANDIDATE_ARTICLE_ID_DOCUMENT_VECTOR,
-    CANDIDATE_ARTICLE_ID,
-    DYNAMIC_HISTORY,
-    FIXED_HISTORY,
-    IMPRESSION_TIMESTAMP,
-    CLICKED_ARTICLES,
-    INVIEW_ARTICLES,
-    ARTICLE_ID,
-    USER_ID,
-    LABELS,
+from ebrec.utils.constants import DEFAULT_INVIEW_ARTICLES_COL, DEFAULT_LABELS_COL
+
+from ebrec.utils.utils_python import (
+    repeat_by_list_values_from_matrix,
+    convert_to_nested_list,
+    make_lookup_objects,
 )
-
-from newssources.utils import repeat_by_list_values_from_matrix, convert_to_nested_list
-from newssources.utils_articles_behaviors import map_list_article_id_to_value
-from newssources.utils_polars import shuffle_rows
+from ebrec.utils.utils_articles_behaviors import map_list_article_id_to_value
+from ebrec.utils.utils_polars import shuffle_rows
 
 
-from models.newsrec.utils import make_lookup_objects
 from models.evaluation.ml_metrics import AucScore
 
 from models.deepctr.utils import save_checkpoint

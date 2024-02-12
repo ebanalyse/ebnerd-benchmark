@@ -96,7 +96,7 @@ def map_list_article_id_to_value(
         └─────────┴─────────────────────────────┘
     """
     GROUPBY_ID = generate_unique_name(behaviors.columns, "_groupby_id")
-    behaviors = behaviors.lazy().with_row_count(GROUPBY_ID)
+    behaviors = behaviors.lazy().with_row_index(GROUPBY_ID)
     # =>
     select_column = (
         behaviors.select(pl.col(GROUPBY_ID), pl.col(behaviors_column))

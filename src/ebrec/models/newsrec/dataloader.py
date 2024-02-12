@@ -292,10 +292,12 @@ class NAMLDataLoader(NewsrecDataLoader):
         )
         return (
             pl.DataFrame()
-            .with_columns(title.select(pl.all().prefix(self.title_prefix)))
-            .with_columns(body.select(pl.all().prefix(self.body_prefix)))
-            .with_columns(category.select(pl.all().prefix(self.category_prefix)))
-            .with_columns(subcategory.select(pl.all().prefix(self.subcategory_prefix)))
+            .with_columns(title.select(pl.all().name.prefix(self.title_prefix)))
+            .with_columns(body.select(pl.all().name.prefix(self.body_prefix)))
+            .with_columns(category.select(pl.all().name.prefix(self.category_prefix)))
+            .with_columns(
+                subcategory.select(pl.all().name.prefix(self.subcategory_prefix))
+            )
         )
 
     def __getitem__(self, idx) -> tuple[tuple[np.ndarray], np.ndarray]:

@@ -5,7 +5,7 @@ import datetime
 import inspect
 
 
-from ebrec.utils.utils_polars import (
+from ebrec.utils._polars import (
     _check_columns_in_df,
     drop_nulls_from_list,
     generate_unique_name,
@@ -22,7 +22,7 @@ from ebrec.utils.constants import (
     DEFAULT_LABELS_COL,
     DEFAULT_USER_COL,
 )
-from ebrec.utils.utils_python import create_lookup_dict
+from ebrec.utils._python import create_lookup_dict
 
 
 def create_binary_labels_column(

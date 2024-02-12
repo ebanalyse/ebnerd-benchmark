@@ -12,16 +12,16 @@ import torch
 
 from ebrec.utils.constants import DEFAULT_INVIEW_ARTICLES_COL, DEFAULT_LABELS_COL
 
-from ebrec.utils.utils_python import (
+from ebrec.utils._python import (
     repeat_by_list_values_from_matrix,
     convert_to_nested_list,
     make_lookup_objects,
 )
-from ebrec.utils.utils_articles_behaviors import map_list_article_id_to_value
-from ebrec.utils.utils_polars import shuffle_rows
+from ebrec.utils._articles_behaviors import map_list_article_id_to_value
+from ebrec.utils._polars import shuffle_rows
 
 from ebrec.evaluation import AucScore
-from ebrec.utils.utils_torch import save_checkpoint
+from ebrec.utils._torch import save_checkpoint
 
 
 @dataclass

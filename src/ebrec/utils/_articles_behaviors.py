@@ -1,4 +1,4 @@
-from ebrec.utils.utils_python import generate_unique_name
+from ebrec.utils._python import generate_unique_name
 
 try:
     import polars as pl

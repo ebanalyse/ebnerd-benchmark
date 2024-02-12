@@ -6,9 +6,9 @@ from ebrec.models.newsrec.dataloader import (
     LSTURDataLoader,
     NRMSDataLoader,
 )
-from ebrec.utils.utils_behaviors import create_user_id_mapping
-from ebrec.utils.utils_articles import create_title_mapping
-from ebrec.utils.utils_python import create_lookup_dict
+from ebrec.utils._behaviors import create_user_id_mapping
+from ebrec.utils._articles import create_title_mapping
+from ebrec.utils._python import create_lookup_dict
 
 # from newssources.utils_polars import create_lookup_dict
 # from pytest.utils import timer_decorator

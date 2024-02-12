@@ -3,8 +3,8 @@ import tensorflow as tf
 import polars as pl
 import numpy as np
 
-from ebrec.utils.utils_articles_behaviors import map_list_article_id_to_value
-from ebrec.utils.utils_python import (
+from ebrec.utils._articles_behaviors import map_list_article_id_to_value
+from ebrec.utils._python import (
     repeat_by_list_values_from_matrix,
     make_lookup_objects,
 )

@@ -1,4 +1,4 @@
-from ebrec.utils.utils_python import create_lookup_dict
+from ebrec.utils._python import create_lookup_dict
 import polars as pl
 from ebrec.utils.constants import DEFAULT_ARTICLE_ID_COL
 

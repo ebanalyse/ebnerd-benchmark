@@ -8,7 +8,7 @@ except ImportError:
     print("polars not available")
 
 
-from ebrec.utils.utils_python import generate_unique_name
+from ebrec.utils._python import generate_unique_name
 
 
 # NOTE to self; when doing the test function, use the same 'df' for the dynamic / static histories

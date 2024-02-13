@@ -51,7 +51,7 @@ def create_binary_labels_column(
         )
     >>> df = pl.DataFrame(
             {
-                DEFAULT_INVIEW_ARTICLES_COL: [[1, 2, 3], [3, 4, 5], [1, 2]],
+                DEFAULT_INVIEW_ARTICLES_COL: [[1, 2, 3], [4, 5, 6], [7, 8]],
                 DEFAULT_CLICKED_ARTICLES_COL: [[2, 3, 4], [3, 5], None],
             }
         )
@@ -63,8 +63,8 @@ def create_binary_labels_column(
         │ list[i64]          ┆ list[i64]           ┆ list[i8]  │
         ╞════════════════════╪═════════════════════╪═══════════╡
         │ [1, 2, 3]          ┆ [2, 3, 4]           ┆ [0, 1, 1] │
-        │ [3, 4, 5]          ┆ [3, 5]              ┆ [1, 0, 1] │
-        │ [1, 2]             ┆ null                ┆ [0, 0]    │
+        │ [4, 5, 6]          ┆ [3, 5]              ┆ [0, 1, 0] │
+        │ [7, 8]             ┆ null                ┆ [0, 0]    │
         └────────────────────┴─────────────────────┴───────────┘
     >>> create_binary_labels_column(df.lazy(), shuffle=True, seed=123).collect()
         shape: (3, 3)
@@ -74,18 +74,18 @@ def create_binary_labels_column(
         │ list[i64]          ┆ list[i64]           ┆ list[i8]  │
         ╞════════════════════╪═════════════════════╪═══════════╡
         │ [3, 1, 2]          ┆ [2, 3, 4]           ┆ [1, 0, 1] │
-        │ [4, 5, 3]          ┆ [3, 5]              ┆ [0, 1, 1] │
-        │ [1, 2]             ┆ null                ┆ [0, 0]    │
+        │ [5, 6, 4]          ┆ [3, 5]              ┆ [1, 0, 0] │
+        │ [7, 8]             ┆ null                ┆ [0, 0]    │
         └────────────────────┴─────────────────────┴───────────┘
     Test_:
     >>> assert create_binary_labels_column(df, shuffle=False)[DEFAULT_LABELS_COL].to_list() == [
             [0, 1, 1],
-            [1, 0, 1],
+            [0, 1, 0],
             [0, 0],
         ]
     >>> assert create_binary_labels_column(df, shuffle=True)[DEFAULT_LABELS_COL].list.sum().to_list() == [
             2,
-            2,
+            1,
             0,
         ]
     """

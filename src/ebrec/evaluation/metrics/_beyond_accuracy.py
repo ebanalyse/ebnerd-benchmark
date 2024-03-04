@@ -42,12 +42,13 @@ def intralist_diversity(
         >>> print(intralist_diversity(np.array([[0.1, 0.2], [0.1, 0.2]])))
             1.1102230246251565e-16
     """
-    R_shape = R.shape
-    if len(R_shape) == 1:
+    R_n = R.shape[0]  # number of recommendations
+    if R_n <= 1:
         # Less than or equal to 1 recommendations in recommendation list
         diversity = np.nan
     else:
-        R_n = R_shape[0]  # number of recommendations
+        if (R_n * (R_n - 1)) == 0:
+            breakpoint()
         pairwise_distances = pairwise_distance_function(R, R)
         diversity = np.sum(pairwise_distances) / (R_n * (R_n - 1))
     return diversity

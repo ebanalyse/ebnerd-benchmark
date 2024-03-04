@@ -3,7 +3,9 @@ from pathlib import Path
 import polars as pl
 import numpy as np
 import datetime
+import zipfile
 import torch
+import tqdm
 import time
 import json
 import yaml
@@ -30,6 +32,118 @@ def write_yaml_file(dictionary: dict, path: str) -> None:
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w") as file:
         yaml.dump(dictionary, file, default_flow_style=False)
+
+
+def rank_predictions_by_score(
+    arr: Iterable[float],
+) -> list[np.ndarray]:
+    """
+    Converts the prediction scores based on their ranking (1 for highest score,
+    2 for second highest, etc.), effectively ranking prediction scores for each row.
+
+    Reference:
+        https://github.com/recommenders-team/recommenders/blob/main/examples/00_quick_start/nrms_MIND.ipynb
+
+    >>> prediction_scores = [[0.2, 0.1, 0.3], [0.1, 0.2], [0.4, 0.2, 0.1, 0.3]]
+    >>> [rank_predictions_by_score(row) for row in prediction_scores]
+        [
+            array([2, 3, 1]),
+            array([2, 1]),
+            array([1, 3, 4, 2])
+        ]
+    """
+    return np.argsort(np.argsort(arr)[::-1]) + 1
+
+
+def write_submission_file(
+    impression_ids: Iterable[int],
+    prediction_scores: Iterable[any],
+    path: Path = Path("prediction.txt"),
+    rm_file: bool = True,
+) -> None:
+    """
+    We align the submission file similar to MIND-format for users who are familar.
+
+    Reference:
+        https://github.com/recommenders-team/recommenders/blob/main/examples/00_quick_start/nrms_MIND.ipynb
+
+    Example:
+    >>> impression_ids = [237, 291, 320]
+    >>> prediction_scores = [[0.2, 0.1, 0.3], [0.1, 0.2], [0.4, 0.2, 0.1, 0.3]]
+    >>> write_submission_file(impression_ids, prediction_scores, path="prediction.txt", rm_file=False)
+    ## Output file:
+        237 [0.2,0.1,0.3]
+        291 [0.1,0.2]
+        320 [0.4,0.2,0.1,0.3]
+    """
+    path = Path(path)
+    with open(path, "w") as f:
+        for impr_index, preds in tqdm(zip(impression_ids, prediction_scores)):
+            preds = "[" + ",".join([str(i) for i in preds]) + "]"
+            f.write(" ".join([str(impr_index), preds]) + "\n")
+    # =>
+    zip_submission_file(path=path, rm_file=rm_file)
+
+
+def read_submission_file(path: Path) -> tuple[int, any]:
+    """
+    >>> impression_ids = [237, 291, 320]
+    >>> prediction_scores = [[0.2, 0.1, 0.3], [0.1, 0.2], [0.4, 0.2, 0.1, 0.3]]
+    >>> write_submission_file(impression_ids, prediction_scores, path="prediction.txt", rm_file=False)
+    >>> read_submission_file("prediction.txt")
+        (
+            [237, 291, 320],
+            [[0.2, 0.1, 0.3], [0.1, 0.2], [0.4, 0.2, 0.1, 0.3]]
+        )
+    """
+    # Read and parse the file
+    impression_ids = []
+    prediction_scores = []
+    with open(path, "r") as file:
+        for line in file:
+            impression_id_str, scores_str = parse_line(line)
+            impression_ids.append(int(impression_id_str))
+            prediction_scores.append(scores_str)
+    return impression_ids, prediction_scores
+
+
+def zip_submission_file(
+    path: Path,
+    verbose: bool = True,
+    rm_file: bool = True,
+) -> None:
+    """
+    Compresses a specified file into a ZIP archive within the same directory.
+
+    Args:
+        path (Path): The directory path where the file to be zipped and the resulting zip file will be located.
+        filename_input (str, optional): The name of the file to be compressed. Defaults to "prediction.txt".
+        filename_zip (str, optional): The name of the output ZIP file. Defaults to "prediction.zip".
+        verbose (bool, optional): If set to True, the function will print the process details. Defaults to True.
+        rm_file (bool, optional): If set to True, the original file will be removed after compression. Defaults to True.
+
+    Returns:
+        None: This function does not return any value.
+    """
+    path = Path(path)
+    path_zip = path.with_suffix(".zip")
+
+    if verbose:
+        print(f"Zipping {path} to {path_zip}")
+    f = zipfile.ZipFile(path_zip, "w", zipfile.ZIP_DEFLATED)
+    f.write(path, arcname=path.name)
+    f.close()
+    if rm_file:
+        path.unlink()
+
+
+def parse_line(l) -> tuple[str, list[float]]:
+    """
+    Parses a single line of text into an identifier and a list of ranks.
+    """
+    impid, ranks = l.strip("\n").split()
+    ranks = json.loads(ranks)
+    return impid, ranks
 
 
 def time_it(enable=True):

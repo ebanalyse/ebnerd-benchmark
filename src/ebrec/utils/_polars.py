@@ -1,6 +1,6 @@
 import numpy as np
 import random
-import ast
+import json
 
 try:
     import polars as pl
@@ -9,56 +9,6 @@ except ImportError:
 
 
 from ebrec.utils._python import generate_unique_name
-
-
-# NOTE to self; when doing the test function, use the same 'df' for the dynamic / static histories
-def write_txt_file(df: pl.DataFrame, col1: str, col2: str, path: str) -> None:
-    """
-    >>> df = pl.DataFrame({
-            'impression_id': [237, 291, 320],
-            'pred_scores': [[0, 0], [0, 0], [0, 0]]  # Simplified for demonstration
-        })
-    >>> write_prediction_scores(df, "impression_id", "pred_scores", "pred.txt")
-    """
-    data_tuples = ((row[col1], row[col2]) for row in df.to_dicts())
-    with open(path, "w") as file:
-        for impression_id, scores in data_tuples:
-            # Convert the list of scores to a string format
-            scores_str = ", ".join(map(str, scores))
-            # Write the line to the file
-            _ = file.write(f"{impression_id} [{scores_str}]\n")
-
-
-def read_text_file(
-    path, col1: str = "impression_id", col2: str = "pred_scores"
-) -> pl.DataFrame:
-    """
-    >>> df = pl.DataFrame({
-            'impression_id': [237, 291, 320],
-            'pred_scores': [[0, 0], [0, 0], [0, 0]]  # Simplified for demonstration
-        })
-    >>> write_prediction_scores(df, "impression_id", "pred_scores", "pred.txt")
-    >>> read_predictions_scores("pred.txt")
-        shape: (3, 2)
-        ┌───────────────┬─────────────┐
-        │ impression_id ┆ pred_scores │
-        │ ---           ┆ ---         │
-        │ i64           ┆ list[i64]   │
-        ╞═══════════════╪═════════════╡
-        │ 237           ┆ [0, 0]      │
-        │ 291           ┆ [0, 0]      │
-        │ 320           ┆ [0, 0]      │
-        └───────────────┴─────────────┘
-    """
-    # Read and parse the file
-    impression_ids = []
-    pred_scores = []
-    with open(path, "r") as file:
-        for line in file:
-            impression_id_str, scores_str = line.strip().split(" ", 1)
-            impression_ids.append(int(impression_id_str))
-            pred_scores.append(ast.literal_eval(scores_str))
-    return pl.DataFrame({col1: impression_ids, col2: pred_scores})
 
 
 def _check_columns_in_df(df: pl.DataFrame, columns: list[str]) -> None:

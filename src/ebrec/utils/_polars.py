@@ -65,6 +65,27 @@ def _validate_equal_list_column_lengths(df: pl.DataFrame, col1: str, col2: str) 
         )
 
 
+def slice_join_dataframes(
+    df1: pl.DataFrame,
+    df2: pl.DataFrame,
+    on: str,
+    how: str,
+) -> pl.DataFrame:
+    """
+    Join two dataframes optimized for memory efficiency.
+    """
+    return pl.concat(
+        (
+            rows.join(
+                df2,
+                on=on,
+                how=how,
+            )
+            for rows in df1.iter_slices()
+        )
+    )
+
+
 def rename_columns(df: pl.DataFrame, map_dict: dict[str, str]) -> pl.DataFrame:
     """
     Examples:

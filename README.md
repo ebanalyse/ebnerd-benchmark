@@ -11,7 +11,7 @@ We recommend [conda](https://docs.conda.io/projects/conda/en/latest/glossary.htm
 
 ```
 # 1. Create and activate a new conda environment
-conda create -n <environment_name> python=3.12
+conda create -n <environment_name> python=3.11
 conda activate <environment_name>
 
 # 2. Clone this repo within VSCode or using command line:
@@ -29,7 +29,6 @@ tensorflow-macos; sys_platform == 'darwin'
 
 
 # Algorithms
-(...)
 
 Model | Description | Examples
 ---------- | ---------- | ----------

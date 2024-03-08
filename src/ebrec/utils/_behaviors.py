@@ -1,4 +1,5 @@
 from typing import Any, Iterable
+from pathlib import Path
 from tqdm import tqdm
 import warnings
 import datetime
@@ -27,7 +28,7 @@ from ebrec.utils._python import create_lookup_dict
 
 def create_binary_labels_column(
     df: pl.DataFrame,
-    shuffle: bool = False,
+    shuffle: bool = True,
     seed: int = None,
     clicked_col: str = DEFAULT_CLICKED_ARTICLES_COL,
     inview_col: str = DEFAULT_INVIEW_ARTICLES_COL,
@@ -189,7 +190,7 @@ def unique_article_ids_in_behaviors(
                 DEFAULT_INVIEW_ARTICLES_COL: [[2, 3], [1, 4], [4], [1, 2, 3]],
                 DEFAULT_CLICKED_ARTICLES_COL: [[], [2], [3, 4], [1]],
             })
-        >>> unique_article_ids_in_behaviors(df.lazy()).sort()
+        >>> unique_article_ids_in_behaviors(df).sort()
             [
                 1
                 2
@@ -199,20 +200,17 @@ def unique_article_ids_in_behaviors(
     """
     df = df.lazy()
     return (
-        (
-            pl.concat(
-                (
-                    df.select(pl.col(item_col).unique().alias(col)),
-                    df.select(pl.col(inview_col).explode().unique().alias(col)),
-                    df.select(pl.col(clicked_col).explode().unique().alias(col)),
-                )
+        pl.concat(
+            (
+                df.select(pl.col(item_col).unique().alias(col)),
+                df.select(pl.col(inview_col).explode().unique().alias(col)),
+                df.select(pl.col(clicked_col).explode().unique().alias(col)),
             )
-            .drop_nulls()
-            .unique()
         )
+        .drop_nulls()
+        .unique()
         .collect()
-        .to_series()
-    )
+    ).to_series()
 
 
 def add_known_user_column(

@@ -1,11 +1,11 @@
 from typing import Iterable
 from pathlib import Path
+from tqdm import tqdm
 import polars as pl
 import numpy as np
 import datetime
 import zipfile
 import torch
-import tqdm
 import time
 import json
 import yaml
@@ -58,8 +58,9 @@ def rank_predictions_by_score(
 def write_submission_file(
     impression_ids: Iterable[int],
     prediction_scores: Iterable[any],
-    path: Path = Path("prediction.txt"),
+    path: Path = Path("predictions.txt"),
     rm_file: bool = True,
+    filename_zip: str = None,
 ) -> None:
     """
     We align the submission file similar to MIND-format for users who are familar.
@@ -70,7 +71,7 @@ def write_submission_file(
     Example:
     >>> impression_ids = [237, 291, 320]
     >>> prediction_scores = [[0.2, 0.1, 0.3], [0.1, 0.2], [0.4, 0.2, 0.1, 0.3]]
-    >>> write_submission_file(impression_ids, prediction_scores, path="prediction.txt", rm_file=False)
+    >>> write_submission_file(impression_ids, prediction_scores, path="predictions.txt", rm_file=False)
     ## Output file:
         237 [0.2,0.1,0.3]
         291 [0.1,0.2]
@@ -82,15 +83,15 @@ def write_submission_file(
             preds = "[" + ",".join([str(i) for i in preds]) + "]"
             f.write(" ".join([str(impr_index), preds]) + "\n")
     # =>
-    zip_submission_file(path=path, rm_file=rm_file)
+    zip_submission_file(path=path, rm_file=rm_file, filename_zip=filename_zip)
 
 
 def read_submission_file(path: Path) -> tuple[int, any]:
     """
     >>> impression_ids = [237, 291, 320]
     >>> prediction_scores = [[0.2, 0.1, 0.3], [0.1, 0.2], [0.4, 0.2, 0.1, 0.3]]
-    >>> write_submission_file(impression_ids, prediction_scores, path="prediction.txt", rm_file=False)
-    >>> read_submission_file("prediction.txt")
+    >>> write_submission_file(impression_ids, prediction_scores, path="predictions.txt", rm_file=False)
+    >>> read_submission_file("predictions.txt")
         (
             [237, 291, 320],
             [[0.2, 0.1, 0.3], [0.1, 0.2], [0.4, 0.2, 0.1, 0.3]]
@@ -109,6 +110,7 @@ def read_submission_file(path: Path) -> tuple[int, any]:
 
 def zip_submission_file(
     path: Path,
+    filename_zip: str = None,
     verbose: bool = True,
     rm_file: bool = True,
 ) -> None:
@@ -117,7 +119,7 @@ def zip_submission_file(
 
     Args:
         path (Path): The directory path where the file to be zipped and the resulting zip file will be located.
-        filename_input (str, optional): The name of the file to be compressed. Defaults to "prediction.txt".
+        filename_input (str, optional): The name of the file to be compressed. Defaults to the path.name.
         filename_zip (str, optional): The name of the output ZIP file. Defaults to "prediction.zip".
         verbose (bool, optional): If set to True, the function will print the process details. Defaults to True.
         rm_file (bool, optional): If set to True, the original file will be removed after compression. Defaults to True.
@@ -126,8 +128,13 @@ def zip_submission_file(
         None: This function does not return any value.
     """
     path = Path(path)
-    path_zip = path.with_suffix(".zip")
+    if filename_zip:
+        path_zip = path.parent.joinpath(filename_zip)
+    else:
+        path_zip = path.with_suffix(".zip")
 
+    if path_zip.suffix != ".zip":
+        raise ValueError(f"suffix for {path_zip.name} has to be '.zip'")
     if verbose:
         print(f"Zipping {path} to {path_zip}")
     f = zipfile.ZipFile(path_zip, "w", zipfile.ZIP_DEFLATED)

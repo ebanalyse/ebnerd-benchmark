@@ -47,8 +47,6 @@ def intralist_diversity(
         # Less than or equal to 1 recommendations in recommendation list
         diversity = np.nan
     else:
-        if (R_n * (R_n - 1)) == 0:
-            breakpoint()
         pairwise_distances = pairwise_distance_function(R, R)
         diversity = np.sum(pairwise_distances) / (R_n * (R_n - 1))
     return diversity

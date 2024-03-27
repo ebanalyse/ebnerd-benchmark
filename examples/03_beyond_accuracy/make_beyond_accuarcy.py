@@ -1,4 +1,4 @@
-from ebrec.utils._python import write_json_file, read_json_file
+from ebrec.utils._python import write_json_file, read_json_file, create_lookup_dict
 from pathlib import Path
 import polars as pl
 import numpy as np
@@ -81,26 +81,31 @@ if not (np.array(candidate_list) - np.array(load_candidate_list)).sum() == 0:
 # ======================================================================
 ### Make candidate lookup dictionary for beyond-accuracy:
 # => Embeddings:
+BERT_VECTOR = "bert_base_multilingual_cased"
+CONTRASTIVE_VECTOR = "contrastive_vector"
+ROBERTA_VECTOR = "xlm_roberta_base"
+DOCUMENT_VECTOR = "document_vector"
+
 emb_contrastive = pl.scan_parquet(
     path.parent.joinpath(
-        "embeddings/Ekstra_Bladet_contrastive_vector/contrastive_vector.parquet"
+        f"embeddings/Ekstra_Bladet_contrastive_vector/{CONTRASTIVE_VECTOR}.parquet"
     )
 )
 emb_roberta = pl.scan_parquet(
     path.parent.joinpath(
-        "embeddings/FacebookAI_xlm_roberta_base/xlm_roberta_base.parquet"
+        f"embeddings/FacebookAI_xlm_roberta_base/{ROBERTA_VECTOR}.parquet"
     )
 )
 emb_bert = pl.scan_parquet(
     path.parent.joinpath(
-        "embeddings/google_bert_base_multilingual_cased/bert_base_multilingual_cased.parquet"
+        f"embeddings/google_bert_base_multilingual_cased/{BERT_VECTOR}.parquet"
     )
 )
 emb_docvec = pl.scan_parquet(
-    path.parent.joinpath("embeddings/Ekstra_Bladet_word2vec/document_vector.parquet")
+    path.parent.joinpath(f"embeddings/Ekstra_Bladet_word2vec/{DOCUMENT_VECTOR}.parquet")
 )
 # =>
-candidate_articles = (
+df_candidate_articles = (
     df_articles.filter(pl.col(DEFAULT_ARTICLE_ID_COL).is_in(candidate_list))
     .join(emb_contrastive, on=DEFAULT_ARTICLE_ID_COL, how="inner")
     .join(emb_roberta, on=DEFAULT_ARTICLE_ID_COL, how="inner")
@@ -118,10 +123,10 @@ candidate_articles = (
     )
     .collect()
 )
-candidate_articles.columns
+df_candidate_articles.columns
 # Make lookup-dictionary:
 candidate_dict = {}
-for row in candidate_articles.iter_rows(named=True):
+for row in df_candidate_articles.iter_rows(named=True):
     # Note, all keys in dictionaries are converted to strings, when serializing an object to JSON format.
     candidate_dict[str(row[DEFAULT_ARTICLE_ID_COL])] = row
 # Write it:
@@ -141,31 +146,76 @@ desc = True
 column = DEFAULT_TOTAL_PAGEVIEWS_COL
 desc = True
 
+PREDICTION_SCORE_COL = "prediction_score"
 
-PRED_NAME = "prediction_pick"
-candidate_articles_ = (
-    candidate_articles.select(DEFAULT_ARTICLE_ID_COL, column)
-    .sort(by=column, descending=desc)
-    .with_row_index(name="prediction_pick", offset=1)
+
+candidate_dict[list(candidate_dict)[0]].keys()
+
+
+from ebrec.evaluation.beyond_accuracy import (
+    IntralistDiversity,
+    Distribution,
+    Serendipity,
+    Sentiment,
+    Coverage,
+    Novelty,
 )
 
-mapping = {
-    aid: value
-    for aid, value in candidate_articles_.select(
-        DEFAULT_ARTICLE_ID_COL, PRED_NAME
-    ).iter_rows()
-}
+instralist_diversity = IntralistDiversity()
+distribution = Distribution()
+serendipity = Serendipity()
+sentiment = Sentiment()
+coverage = Coverage()
+novelty = Novelty()
 
-candidate_list_views = rank_predictions_by_score(
-    [mapping.get(aid, 0) for aid in candidate_list]
+
+np.random.sample
+
+df_candidate_articles.select(DEFAULT_ARTICLE_ID_COL).sample(n=5)
+
+df_ = make_prediction_score(
+    df_candidate_articles,
+    column=DEFAULT_TOTAL_INVIEWS_COL,
+    desc=True,
+    prediction_score_col=PREDICTION_SCORE_COL,
 )
-candidate_list_views = [mapping.get(aid, 0) for aid in candidate_list]
-
+ranked_candidates = np.array(
+    [df_.select(DEFAULT_ARTICLE_ID_COL).cast(pl.Utf8).to_series()]
+)
+TOP_N = 5
 #
-df_behaviors = df_behaviors.with_columns(
-    pl.Series(DEFAULT_INVIEW_ARTICLES_COL, [candidate_list_views])
+instralist_diversity(
+    ranked_candidates[:, :TOP_N],
+    lookup_dict=candidate_dict,
+    lookup_key=CONTRASTIVE_VECTOR,
 )
-#
+
+# Distributions:
+distribution(
+    ranked_candidates[:, :TOP_N],
+    lookup_dict=candidate_dict,
+    lookup_key="category_str",
+)
+distribution(
+    ranked_candidates[:, :TOP_N],
+    lookup_dict=candidate_dict,
+    lookup_key="topics",
+)
+
+
+# Write a submission file:
+prediction_score_lookup = create_lookup_dict(
+    df_, DEFAULT_ARTICLE_ID_COL, PREDICTION_SCORE_COL
+)
+
+candidate_list_prediction_score = rank_predictions_by_score(
+    [prediction_score_lookup.get(aid, 1e-6) for aid in candidate_list]
+)
+
+df_behaviors_ = df_behaviors.with_columns(
+    pl.Series(DEFAULT_INVIEW_ARTICLES_COL, [candidate_list_prediction_score])
+)
+
 ids = df_behaviors["impression_id"].to_list()
 preds = df_behaviors[DEFAULT_INVIEW_ARTICLES_COL].to_list()
 

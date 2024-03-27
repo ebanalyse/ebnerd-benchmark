@@ -169,8 +169,6 @@ coverage = Coverage()
 novelty = Novelty()
 
 
-np.random.sample
-
 df_candidate_articles.select(DEFAULT_ARTICLE_ID_COL).sample(n=5)
 
 df_ = make_prediction_score(
@@ -225,3 +223,21 @@ write_submission_file(
     path=path_beyond.joinpath("predictions.txt"),
     filename_zip="predictions_inviews.zip",
 )
+
+
+def compute_transform_distribution(
+    candidate_list: list[list[str]],
+    lookup_dict: dict,
+    lookup_key: str,
+    suffix: str,
+):
+    # =>
+    distribution = Distribution()
+    return {
+        **{"name": f"{distribution.name}{suffix}"},
+        **distribution(
+            candidate_list,
+            lookup_dict=lookup_dict,
+            lookup_key=lookup_key,
+        ),
+    }

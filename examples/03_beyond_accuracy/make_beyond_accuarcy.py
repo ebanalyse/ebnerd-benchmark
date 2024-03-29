@@ -8,6 +8,7 @@ from ebrec.utils._constants import (
     DEFAULT_ARTICLE_PUBLISHED_TIMESTAMP_COL,
     DEFAULT_ARTICLE_MODIFIED_TIMESTAMP_COL,
     DEFAULT_IMPRESSION_TIMESTAMP_COL,
+    DEFAULT_HISTORY_ARTICLE_ID_COL,
     DEFAULT_TOTAL_PAGEVIEWS_COL,
     DEFAULT_INVIEW_ARTICLES_COL,
     DEFAULT_TOTAL_INVIEWS_COL,
@@ -15,8 +16,11 @@ from ebrec.utils._constants import (
     DEFAULT_ARTICLE_ID_COL,
     DEFAULT_POSTCODE_COL,
     DEFAULT_GENDER_COL,
+    DEFAULT_USER_COL,
     DEFAULT_AGE_COL,
 )
+
+from ebrec.utils._behaviors import truncate_history
 
 path = Path("examples/downloads/demo")
 path_beyond = path.joinpath("beyond_accuracy")
@@ -34,6 +38,19 @@ df_behaviors = (
     .collect()
 )
 df_articles = pl.scan_parquet(path.joinpath("articles.parquet"))
+
+df_history = (
+    pl.scan_parquet(path.joinpath("test", "history.parquet"))
+    .select(DEFAULT_USER_COL, DEFAULT_HISTORY_ARTICLE_ID_COL)
+    .pipe(
+        truncate_history,
+        column=DEFAULT_HISTORY_ARTICLE_ID_COL,
+        history_size=10,
+        padding_value=None,
+        enable_warning=True,
+    )
+)
+
 
 # DUMP META DATA FOR USERS:
 users_dict = {

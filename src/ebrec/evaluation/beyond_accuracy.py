@@ -269,7 +269,7 @@ class Sentiment:
 
     Examples:
         >>> sent = Sentiment()
-        >>> R = np.array([['item1', 'item2'], ['item2', 'item3'], ['item2', 'item4']])
+        >>> R = np.array([['item1', 'item2'], ['item2', 'item3'], ['item2', 'item5']])
         >>> lookup_dict = {
                 "item1": {"s": 1.00, "na" : []},
                 "item2": {"s": 0.50, "na" : []},
@@ -278,7 +278,7 @@ class Sentiment:
             }
         >>> lookup_key = "s"
         >>> sent(R, lookup_dict, 's')
-            array([0.75 , 0.375, 0.25 ])
+            array([0.75 , 0.375, 0.5 ])
         >>> sent._candidate_sentiment(list(lookup_dict), 1, lookup_dict, lookup_key)
             (1.0, 0.0)
     """
@@ -288,7 +288,7 @@ class Sentiment:
 
     def __call__(
         self,
-        R: np.ndarray[np.ndarray[str]],
+        R: np.ndarray,
         lookup_dict: dict[str, dict[str, any]],
         lookup_key: str,
     ):
@@ -297,13 +297,14 @@ class Sentiment:
         for sample in R:
             ids = get_keys_in_dict(sample, lookup_dict)
             sentiment_scores.append(
-                np.array([lookup_dict[id].get(lookup_key) for id in ids])
+                np.mean([lookup_dict[id].get(lookup_key) for id in ids])
             )
-        return np.asarray(sentiment_scores).mean(axis=1)
+        # breakpoint()
+        return np.asarray(sentiment_scores)
 
     def _candidate_sentiment(
         self,
-        R: np.ndarray[str],
+        R: np.ndarray,
         n_recommendations: int,
         lookup_dict: dict[str, dict[str, any]],
         lookup_key: str,

@@ -12,15 +12,19 @@ import yaml
 import time
 
 
-def read_json_file(file_path: str) -> dict:
-    with open(file_path) as file:
+def read_json_file(path: str, verbose: bool = False) -> dict:
+    if verbose:
+        print(f"Writing JSON: '{path}'")
+    with open(path) as file:
         return json.load(file)
 
 
-def write_json_file(dictionary: dict, path: str) -> None:
+def write_json_file(dictionary: dict, path: str, verbose: bool = False) -> None:
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w") as file:
         json.dump(dictionary, file)
+    if verbose:
+        print(f"Writing JSON: '{path}'")
 
 
 def read_yaml_file(path: str) -> dict:

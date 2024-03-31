@@ -299,7 +299,6 @@ class Sentiment:
             sentiment_scores.append(
                 np.mean([lookup_dict[id].get(lookup_key) for id in ids])
             )
-        # breakpoint()
         return np.asarray(sentiment_scores)
 
     def _candidate_sentiment(

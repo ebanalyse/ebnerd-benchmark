@@ -245,6 +245,97 @@ class Coverage:
         return coverage_c, coverage_f
 
 
+### Sentiment:
+class Sentiment:
+    """
+    A class designed to evaluate sentiment scores for items within nested arrays
+    based on a lookup dictionary.
+
+    Args:
+        R (np.ndarray): A numpy array of numpy arrays containing strings, where each
+            sub-array represents a group of items whose sentiment scores are to be averaged.
+        lookup_dict (dict): A dictionary where each key is an item name (as found in `R`)
+            and its value is another dictionary containing sentiment scores and potentially
+            other information.
+        lookup_key (str): The key within the nested dictionaries of `lookup_dict` that
+            contains the sentiment score.
+
+    Returns:
+        np.ndarray: A numpy array containing the average sentiment score for each sub-array
+            in `R`.
+
+    Raises:
+        KeyError: If `lookup_key` is not found in any of the nested dictionaries in `lookup_dict`.
+
+    Examples:
+        >>> sent = Sentiment()
+        >>> R = np.array([['item1', 'item2'], ['item2', 'item3'], ['item2', 'item5']])
+        >>> lookup_dict = {
+                "item1": {"s": 1.00, "na" : []},
+                "item2": {"s": 0.50, "na" : []},
+                "item3": {"s": 0.25, "na" : []},
+                "item4": {"s": 0.00, "na" : []},
+            }
+        >>> lookup_key = "s"
+        >>> sent(R, lookup_dict, 's')
+            array([0.75 , 0.375, 0.5 ])
+        >>> sent._candidate_sentiment(list(lookup_dict), 1, lookup_dict, lookup_key)
+            (1.0, 0.0)
+    """
+
+    def __init__(self) -> None:
+        self.name = "sentiment"
+
+    def __call__(
+        self,
+        R: np.ndarray,
+        lookup_dict: dict[str, dict[str, any]],
+        lookup_key: str,
+    ):
+        check_key_in_all_nested_dicts(lookup_dict, lookup_key)
+        sentiment_scores = []
+        for sample in R:
+            ids = get_keys_in_dict(sample, lookup_dict)
+            sentiment_scores.append(
+                np.mean([lookup_dict[id].get(lookup_key) for id in ids])
+            )
+        return np.asarray(sentiment_scores)
+
+    def _candidate_sentiment(
+        self,
+        R: np.ndarray,
+        n_recommendations: int,
+        lookup_dict: dict[str, dict[str, any]],
+        lookup_key: str,
+    ):
+        """
+        Compute the minimum and maximum sentiment scores for candidate recommendations.
+
+        Args:
+            R (np.ndarray[str]): An array of item IDs from which to generate recommendation combinations.
+            n_recommendations (int): The number of recommendations per combination to evaluate.
+            lookup_dict (dict[str, dict[str, any]]): A dictionary mapping item IDs to their attributes, including the
+                vectors identified by `lookup_key` used for calculating diversity.
+            lookup_key (str): The key within the attribute dictionaries of `lookup_dict` corresponding to the item
+                vectors used in diversity calculations.
+
+        Returns:
+            tuple[float, float]: The minimum and maximum sentiment scores among the candidate list.
+        """
+        #
+        check_key_in_all_nested_dicts(lookup_dict, lookup_key)
+        R = get_keys_in_dict(R, lookup_dict)
+        sentiment_scores = sorted([lookup_dict[id].get(lookup_key) for id in R])
+
+        n_lowest_scores = sentiment_scores[:n_recommendations]
+        n_highest_scores = sentiment_scores[-n_recommendations:]
+
+        min_novelty = np.mean(n_highest_scores)
+        max_novelty = np.mean(n_lowest_scores)
+
+        return min_novelty, max_novelty
+
+
 ### Serendipity:
 class Serendipity:
     """

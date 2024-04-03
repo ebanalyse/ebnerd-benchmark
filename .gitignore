@@ -1,5 +1,6 @@
 share/python-wheels/
 pip-wheel-metadata/
+.ipynb_checkpoints/
 .installed.cfg
 develop-eggs/
 __pycache__/

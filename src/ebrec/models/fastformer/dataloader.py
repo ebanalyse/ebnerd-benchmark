@@ -15,7 +15,7 @@ from ebrec.utils._constants import DEFAULT_INVIEW_ARTICLES_COL, DEFAULT_LABELS_C
 from ebrec.utils._python import (
     repeat_by_list_values_from_matrix,
     convert_to_nested_list,
-    make_lookup_objects,
+    create_lookup_objects,
 )
 from ebrec.utils._articles_behaviors import map_list_article_id_to_value
 from ebrec.utils._polars import shuffle_rows
@@ -52,7 +52,7 @@ class FastformerDataset(Dataset):
         self.behaviors = self.behaviors.with_columns(
             pl.col(self.labels_col).list.len().alias(self.n_samples_col)
         )
-        self.lookup_indexes, self.lookup_matrix = make_lookup_objects(
+        self.lookup_indexes, self.lookup_matrix = create_lookup_objects(
             self.article_dict, unknown_representation="zeros"
         )
 

@@ -6,7 +6,7 @@ import numpy as np
 from ebrec.utils._articles_behaviors import map_list_article_id_to_value
 from ebrec.utils._python import (
     repeat_by_list_values_from_matrix,
-    make_lookup_objects,
+    create_lookup_objects,
 )
 
 from ebrec.utils._constants import (
@@ -37,7 +37,7 @@ class NewsrecDataLoader(tf.keras.utils.Sequence):
         """
         Post-initialization method. Loads the data and sets additional attributes.
         """
-        self.lookup_article_index, self.lookup_article_matrix = make_lookup_objects(
+        self.lookup_article_index, self.lookup_article_matrix = create_lookup_objects(
             self.article_dict, unknown_representation=self.unknown_representation
         )
         self.unknown_index = [0]
@@ -222,7 +222,7 @@ class NAMLDataLoader(NewsrecDataLoader):
         (
             self.lookup_article_index_body,
             self.lookup_article_matrix_body,
-        ) = make_lookup_objects(
+        ) = create_lookup_objects(
             self.body_mapping, unknown_representation=self.unknown_representation
         )
         if self.eval_mode:

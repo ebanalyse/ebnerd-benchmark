@@ -409,7 +409,7 @@ def create_lookup_dict(df: pl.DataFrame, key: str, value: str) -> dict:
     return dict(zip(df[key], df[value]))
 
 
-def make_lookup_objects(
+def create_lookup_objects(
     lookup_dictionary: dict[int, np.array], unknown_representation: str
 ) -> tuple[dict[int, pl.Series], np.array]:
     """Creates lookup objects for efficient data retrieval.
@@ -442,7 +442,7 @@ def make_lookup_objects(
             20: np.array([0.4, 0.5, 0.6]),
             30: np.array([0.7, 0.8, 0.9]),
         }
-    >>> lookup_dict, lookup_matrix = make_lookup_objects(data, "zeros")
+    >>> lookup_dict, lookup_matrix = create_lookup_objects(data, "zeros")
 
     >>> lookup_dict
         {10: shape: (1,)

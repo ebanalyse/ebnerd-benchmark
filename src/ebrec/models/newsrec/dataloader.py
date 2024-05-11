@@ -129,7 +129,7 @@ class LSTURDataLoader(NewsrecDataLoader):
     unknown_user_value: int = 0
 
     def transform(self, df: pl.DataFrame) -> pl.DataFrame:
-        return (
+        transformed_df = (
             df.pipe(
                 map_list_article_id_to_value,
                 behaviors_column=self.history_column,
@@ -137,19 +137,27 @@ class LSTURDataLoader(NewsrecDataLoader):
                 fill_nulls=self.unknown_index,
                 drop_nulls=False,
             )
-            .pipe(
+        .pipe(
                 map_list_article_id_to_value,
                 behaviors_column=self.inview_col,
                 mapping=self.lookup_article_index,
                 fill_nulls=self.unknown_index,
                 drop_nulls=False,
             )
-            .with_columns(
-                pl.col(self.user_col).replace(
-                    self.user_id_mapping, default=self.unknown_user_value
-                )
-            )
         )
+
+        # Check if user_id_mapping is None and use a default mapping if necessary
+        if self.user_id_mapping is None:
+            default_mapping = {value: value for value in df[self.user_col].unique()}
+            transformed_df = transformed_df.with_columns(
+                pl.col(self.user_col).replace(default_mapping, default=self.unknown_user_value)
+            )
+        else:
+            transformed_df = transformed_df.with_columns(
+                pl.col(self.user_col).replace(self.user_id_mapping, default=self.unknown_user_value)
+            )
+
+        return transformed_df
 
     def __getitem__(self, idx) -> tuple[tuple[np.ndarray], np.ndarray]:
         """

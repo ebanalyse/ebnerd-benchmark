@@ -32,9 +32,6 @@ tensorflow-gpu; sys_platform == 'linux'
 tensorflow-macos; sys_platform == 'darwin'
 ```
 
-# Data manipulation and enrichement
-We have created a small [notebook](https://github.com/ebanalyse/ebnerd-benchmark/blob/main/examples/00_quick_start/dataset_ebnerd.ipynb) demo showing how one can join histories and create binary labels.
-
 # Algorithms
 To get started quickly, we have implemented a couple of News Recommender Systems, specifically, 
 [Neural Recommendation with Long- and Short-term User Representations](https://aclanthology.org/P19-1033/) (LSTUR),
@@ -43,5 +40,14 @@ To get started quickly, we have implemented a couple of News Recommender Systems
 [Neural Recommendation with Multi-Head Self-Attention](https://aclanthology.org/D19-1671/) (NRMS). 
 The source code originates from the brilliant RS repository, [recommenders](https://github.com/recommenders-team/recommenders). We have simply stripped it of all non-model-related code.
 
-For now, we have created a [notebook](https://github.com/ebanalyse/ebnerd-benchmark/blob/main/examples/00_quick_start/nrms_ebnerd.ipynb) where we train NRMS on EB-NeRD - this is a very simple version using the demo dataset. More implementation examples will come at a later stage.
+
+# Notebooks
+To help you get started, we have created a few notebooks. These are somewhat simple and designed to get you started. We do plan to have more at a later stage, such as reproducible model trainings.
+The notebooks were made on macOS, and you might need to perform small modifications to have them running on your system.
+
+## Model training
+We have created a [notebook](https://github.com/ebanalyse/ebnerd-benchmark/blob/main/examples/00_quick_start/nrms_ebnerd.ipynb) where we train NRMS on EB-NeRD - this is a very simple version using the demo dataset.
+
+## Data manipulation and enrichment
+In the [dataset_ebnerd](https://github.com/ebanalyse/ebnerd-benchmark/blob/main/examples/00_quick_start/dataset_ebnerd.ipynb) demo, we show how one can join histories and create binary labels.
 

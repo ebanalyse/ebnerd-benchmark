@@ -39,3 +39,8 @@ To get started quickly, we have implemented a couple of News Recommender Systems
 The source code originates from the brilliant RS repository, [recommenders](https://github.com/recommenders-team/recommenders). We have simply stripped it of all non-model-related code.
 
 For now, we have created a [notebook](https://github.com/ebanalyse/ebnerd-benchmark/blob/main/examples/00_quick_start/nrms_ebnerd.ipynb) where we train NRMS on EB-NeRD - this is a very simple version using the demo dataset. More implementation examples will come at a later stage.
+
+# Contributors
+<p align="center">
+  <img src="https://contributors-img.web.app/image?repo=ebanalyse/ebnerd-benchmark" width = 100/>
+</p>

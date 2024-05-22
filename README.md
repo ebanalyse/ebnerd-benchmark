@@ -26,6 +26,12 @@ git clone https://github.com/ebanalyse/ebnerd-benchmark.git
 pip install .
 ```
 
+We have experienced issues installing *tensorflow* for M1 Macbooks (```sys_platform == 'darwin'```) when using conda. To avoid this, we suggest to use venv if running on macbooks.
+```
+python3 -m venv venv
+source  venv/bin/activate
+```
+
 ## Running GPU
 ```
 tensorflow-gpu; sys_platform == 'linux'

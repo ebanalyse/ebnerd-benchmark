@@ -2,9 +2,7 @@
 name = "ebrec"
 description = "Ekstra Bladet Benchmark"
 version = "0.0.1"
-authors = [
-    { name = "Johannes Kruse", email = "johannes.kruse@eb.dk" }
-]
+authors = [{ name = "Johannes Kruse", email = "johannes.kruse@eb.dk" }]
 requires-python = ">=3.10, <3.12"
 dependencies = [
     # fastformer:
@@ -25,13 +23,10 @@ dependencies = [
 [project.optional-dependencies]
 # pip install "my_project[extras]"
 # pip install -e .'[notebooks]'
-notebooks = [
-    "transformers", 
-    "jupyter"
-]
-tests =[
-    "pytest", 
-    "transformers>=4.30.0, <4.37.3", 
+notebooks = ["transformers", "jupyter"]
+tests = [
+    "pytest",
+    "transformers>=4.30.0, <4.37.3",
     "tensorflow>=2.12.0, <2.16.0",
     "torch>=2.0.0, <2.3.0",
 ]

@@ -45,4 +45,3 @@ input = (his_input_title, pred_input_title)
 # fit/predict:
 model.model.fit(input, label_data)
 model.model.predict(input)
-

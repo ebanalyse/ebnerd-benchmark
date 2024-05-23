@@ -33,6 +33,7 @@ from ebrec.models.newsrec.dataloader import NRMSDataLoader
 from ebrec.models.newsrec.model_config import hparams_nrms
 from ebrec.models.newsrec import NRMSModel
 
+# python examples/00_quick_start/nrms_ebnerd.py
 
 def ebnerd_from_path(path: Path, history_size: int = 30) -> pl.DataFrame:
     """
@@ -73,7 +74,7 @@ COLUMNS = [
     DEFAULT_IMPRESSION_ID_COL,
 ]
 HISTORY_SIZE = 10
-N_SAMPLES = 100
+FRACTION = 1.0
 
 df_train = (
     ebnerd_from_path(PATH.joinpath(DATASPLIT, "train"), history_size=HISTORY_SIZE)
@@ -86,27 +87,26 @@ df_train = (
         seed=123,
     )
     .pipe(create_binary_labels_column)
-    .sample(n=N_SAMPLES)
+    .sample(fraction=FRACTION)
 )
 df_validation = (
     ebnerd_from_path(PATH.joinpath(DATASPLIT, "validation"), history_size=HISTORY_SIZE)
     .select(COLUMNS)
     .pipe(create_binary_labels_column)
-    .sample(n=N_SAMPLES)
+    .sample(fraction=FRACTION)
 )
 df_articles = pl.read_parquet(PATH.joinpath("articles.parquet"))
 
-
+# =>
 os.environ["TOKENIZERS_PARALLELISM"] = "false"  # or "true"
 TRANSFORMER_MODEL_NAME = "FacebookAI/xlm-roberta-base"
 TEXT_COLUMNS_TO_USE = [DEFAULT_TITLE_COL, DEFAULT_SUBTITLE_COL]
 MAX_TITLE_LENGTH = 30
 
-# LOAD HUGGINGFACE:
+# => LOAD HUGGINGFACE:
 transformer_model = AutoModel.from_pretrained(TRANSFORMER_MODEL_NAME)
 transformer_tokenizer = AutoTokenizer.from_pretrained(TRANSFORMER_MODEL_NAME)
 
-# We'll init the word embeddings using the
 word2vec_embedding = get_transformers_word_embeddings(transformer_model)
 #
 df_articles, cat_cal = concat_str_columns(df_articles, columns=TEXT_COLUMNS_TO_USE)
@@ -125,7 +125,7 @@ train_dataloader = NRMSDataLoader(
     unknown_representation="zeros",
     history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
     eval_mode=False,
-    batch_size=2,
+    batch_size=32,
 )
 val_dataloader = NRMSDataLoader(
     behaviors=df_validation,
@@ -141,7 +141,7 @@ MODEL_NAME = "NRMS"
 LOG_DIR = f"downloads/runs/{MODEL_NAME}"
 MODEL_WEIGHTS = f"downloads/data/state_dict/{MODEL_NAME}/weights"
 
-# CALLBACKS
+# => CALLBACKS
 tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=LOG_DIR, histogram_freq=1)
 early_stopping = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=2)
 modelcheckpoint = tf.keras.callbacks.ModelCheckpoint(
@@ -156,8 +156,19 @@ model = NRMSModel(
 )
 hist = model.model.fit(
     train_dataloader,
-    validation_data=val_dataloader,
     epochs=10,
     callbacks=[tensorboard_callback, early_stopping, modelcheckpoint],
 )
 _ = model.model.load_weights(filepath=MODEL_WEIGHTS)
+
+# =>
+pred_validation = model.scorer.predict(val_dataloader)
+df_validation = add_prediction_scores(df_validation, pred_validation.tolist())
+
+# =>
+metrics = MetricEvaluator(
+    labels=df_validation["labels"].to_list(),
+    predictions=df_validation["scores"].to_list(),
+    metric_functions=[AucScore(), MrrScore(), NdcgScore(k=5), NdcgScore(k=10)],
+)
+print(metrics.evaluate())

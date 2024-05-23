@@ -35,6 +35,7 @@ from ebrec.models.newsrec import NRMSModel
 
 # python examples/00_quick_start/nrms_ebnerd.py
 
+
 def ebnerd_from_path(path: Path, history_size: int = 30) -> pl.DataFrame:
     """
     Load ebnerd - function

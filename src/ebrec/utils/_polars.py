@@ -336,6 +336,23 @@ def filter_maximum_lengths_from_list(
     )
 
 
+def split_df(df, fraction=0.8, seed: int = None, shuffle: bool = True):
+    """
+    Splits a DataFrame into two parts based on a specified fraction.
+    >>> df = pl.DataFrame({'A': range(10), 'B': range(10, 20)})
+    >>> df1, df2 = split_df(df, fraction=0.8, seed=42, shuffle=True)
+    >>> len(df1)
+        8
+    >>> len(df2)
+        2
+    """
+    if not 0 < fraction < 1:
+        raise ValueError("fraction must be between 0 and 1")
+    df = df.sample(fraction=1.0, shuffle=shuffle, seed=seed)
+    n_split_sample = int(len(df) * fraction)
+    return df[:n_split_sample], df[n_split_sample:]
+
+
 def drop_nulls_from_list(df: pl.DataFrame, column: str) -> pl.DataFrame:
     """
     Drops null values from a specified column in a Polars DataFrame.

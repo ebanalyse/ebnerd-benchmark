@@ -121,7 +121,7 @@ article_mapping = create_article_id_to_value_mapping(
 )
 
 train_dataloader = NRMSDataLoader(
-    behaviors=df_train,
+    behaviors=df_train[:50],
     article_dict=article_mapping,
     unknown_representation="zeros",
     history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
@@ -129,11 +129,11 @@ train_dataloader = NRMSDataLoader(
     batch_size=32,
 )
 val_dataloader = NRMSDataLoader(
-    behaviors=df_validation,
+    behaviors=df_validation[:50],
     article_dict=article_mapping,
     unknown_representation="zeros",
     history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
-    eval_mode=True,
+    eval_mode=False,
     batch_size=32,
 )
 
@@ -157,14 +157,14 @@ model = NRMSModel(
 )
 hist = model.model.fit(
     train_dataloader,
-    epochs=10,
+    validation_data=val_dataloader,
+    epochs=5,
     callbacks=[tensorboard_callback, early_stopping, modelcheckpoint],
 )
-_ = model.model.load_weights(filepath=MODEL_WEIGHTS)
 
 # =>
 pred_validation = model.scorer.predict(val_dataloader)
-df_validation = add_prediction_scores(df_validation, pred_validation.tolist())
+df_validation = add_prediction_scores(df_validation[:1000], pred_validation.tolist())
 
 # =>
 metrics = MetricEvaluator(
@@ -173,3 +173,4 @@ metrics = MetricEvaluator(
     metric_functions=[AucScore(), MrrScore(), NdcgScore(k=5), NdcgScore(k=10)],
 )
 print(metrics.evaluate())
+# 0.54

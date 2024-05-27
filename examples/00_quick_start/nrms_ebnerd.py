@@ -180,7 +180,7 @@ hist = model.model.fit(
 
 # =>
 pred_validation = model.scorer.predict(test_loader)
-df_test = add_prediction_scores(df_test[:50], pred_validation.tolist())
+df_test = add_prediction_scores(df_test, pred_validation.tolist())
 
 # =>
 metrics = MetricEvaluator(

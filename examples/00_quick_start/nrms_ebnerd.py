@@ -124,13 +124,13 @@ df_articles, token_col_title = convert_text2encoding_with_transformers(
 article_mapping = create_article_id_to_value_mapping(
     df=df_articles, value_col=token_col_title
 )
-COLUMNS = [
+COLUMNS_DATALOAD = [
     DEFAULT_HISTORY_ARTICLE_ID_COL,
     DEFAULT_INVIEW_ARTICLES_COL,
     DEFAULT_LABELS_COL,
 ]
 train_loader = NRMSDataLoaderTransformed(
-    behaviors=df_train.select(COLUMNS),
+    behaviors=df_train.select(COLUMNS_DATALOAD),
     article_dict=article_mapping,
     unknown_representation="zeros",
     history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
@@ -138,7 +138,7 @@ train_loader = NRMSDataLoaderTransformed(
     batch_size=32,
 )
 val_loader = NRMSDataLoaderTransformed(
-    behaviors=df_val.select(COLUMNS),
+    behaviors=df_val.select(COLUMNS_DATALOAD),
     article_dict=article_mapping,
     unknown_representation="zeros",
     history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
@@ -146,7 +146,7 @@ val_loader = NRMSDataLoaderTransformed(
     batch_size=32,
 )
 test_loader = NRMSDataLoaderTransformed(
-    behaviors=df_test.select(COLUMNS),
+    behaviors=df_test.select(COLUMNS_DATALOAD),
     article_dict=article_mapping,
     unknown_representation="zeros",
     history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,

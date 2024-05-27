@@ -24,12 +24,12 @@ from ebrec.utils._behaviors import (
 )
 from ebrec.evaluation import MetricEvaluator, AucScore, NdcgScore, MrrScore
 from ebrec.utils._articles import convert_text2encoding_with_transformers
-from ebrec.utils._polars import concat_str_columns, slice_join_dataframes
+from ebrec.utils._polars import concat_str_columns, slice_join_dataframes, split_df
 from ebrec.utils._articles import create_article_id_to_value_mapping
 from ebrec.utils._nlp import get_transformers_word_embeddings
 from ebrec.utils._python import write_submission_file, rank_predictions_by_score
 
-from ebrec.models.newsrec.dataloader import NRMSDataLoader
+from ebrec.models.newsrec.dataloader import NRMSDataLoader, NRMSDataLoaderTransformed
 from ebrec.models.newsrec.model_config import hparams_nrms
 from ebrec.models.newsrec import NRMSModel
 
@@ -77,7 +77,7 @@ COLUMNS = [
 HISTORY_SIZE = 10
 FRACTION = 1.0
 
-df_train = (
+df_training = (
     ebnerd_from_path(PATH.joinpath(DATASPLIT, "train"), history_size=HISTORY_SIZE)
     .select(COLUMNS)
     .pipe(
@@ -90,13 +90,19 @@ df_train = (
     .pipe(create_binary_labels_column)
     .sample(fraction=FRACTION)
 )
-df_validation = (
+df_train, df_val = split_df(df_training, 0.8)
+
+df_test = (
     ebnerd_from_path(PATH.joinpath(DATASPLIT, "validation"), history_size=HISTORY_SIZE)
     .select(COLUMNS)
     .pipe(create_binary_labels_column)
     .sample(fraction=FRACTION)
 )
 df_articles = pl.read_parquet(PATH.joinpath("articles.parquet"))
+
+# df_train = df_train[:50]
+# df_val = df_val[:50]
+# df_test = df_test[:50]
 
 # =>
 os.environ["TOKENIZERS_PARALLELISM"] = "false"  # or "true"
@@ -114,29 +120,39 @@ df_articles, cat_cal = concat_str_columns(df_articles, columns=TEXT_COLUMNS_TO_U
 df_articles, token_col_title = convert_text2encoding_with_transformers(
     df_articles, transformer_tokenizer, cat_cal, max_length=MAX_TITLE_LENGTH
 )
-del transformer_model, transformer_tokenizer
 # =>
 article_mapping = create_article_id_to_value_mapping(
     df=df_articles, value_col=token_col_title
 )
-
-train_dataloader = NRMSDataLoader(
-    behaviors=df_train[:50],
+COLUMNS = [
+    DEFAULT_HISTORY_ARTICLE_ID_COL,
+    DEFAULT_INVIEW_ARTICLES_COL,
+    DEFAULT_LABELS_COL,
+]
+train_loader = NRMSDataLoaderTransformed(
+    behaviors=df_train.select(COLUMNS),
     article_dict=article_mapping,
     unknown_representation="zeros",
     history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
     eval_mode=False,
     batch_size=32,
 )
-val_dataloader = NRMSDataLoader(
-    behaviors=df_validation[:50],
+val_loader = NRMSDataLoaderTransformed(
+    behaviors=df_val.select(COLUMNS),
     article_dict=article_mapping,
     unknown_representation="zeros",
     history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
     eval_mode=False,
     batch_size=32,
 )
-
+test_loader = NRMSDataLoaderTransformed(
+    behaviors=df_test.select(COLUMNS),
+    article_dict=article_mapping,
+    unknown_representation="zeros",
+    history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
+    eval_mode=True,
+    batch_size=32,
+)
 
 MODEL_NAME = "NRMS"
 LOG_DIR = f"downloads/runs/{MODEL_NAME}"
@@ -145,9 +161,9 @@ MODEL_WEIGHTS = f"downloads/data/state_dict/{MODEL_NAME}/weights"
 # => CALLBACKS
 tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=LOG_DIR, histogram_freq=1)
 early_stopping = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=2)
-modelcheckpoint = tf.keras.callbacks.ModelCheckpoint(
-    filepath=MODEL_WEIGHTS, save_best_only=True, save_weights_only=True, verbose=1
-)
+# modelcheckpoint = tf.keras.callbacks.ModelCheckpoint(
+#     filepath=MODEL_WEIGHTS, save_best_only=True, save_weights_only=True, verbose=1
+# )
 
 hparams_nrms.history_size = HISTORY_SIZE
 model = NRMSModel(
@@ -156,21 +172,20 @@ model = NRMSModel(
     seed=42,
 )
 hist = model.model.fit(
-    train_dataloader,
-    validation_data=val_dataloader,
-    epochs=5,
-    callbacks=[tensorboard_callback, early_stopping, modelcheckpoint],
+    train_loader,
+    validation_data=val_loader,
+    epochs=10,
+    callbacks=[tensorboard_callback, early_stopping],
 )
 
 # =>
-pred_validation = model.scorer.predict(val_dataloader)
-df_validation = add_prediction_scores(df_validation[:1000], pred_validation.tolist())
+pred_validation = model.scorer.predict(test_loader)
+df_test = add_prediction_scores(df_test[:50], pred_validation.tolist())
 
 # =>
 metrics = MetricEvaluator(
-    labels=df_validation["labels"].to_list(),
-    predictions=df_validation["scores"].to_list(),
+    labels=df_test["labels"].to_list(),
+    predictions=df_test["scores"].to_list(),
     metric_functions=[AucScore(), MrrScore(), NdcgScore(k=5), NdcgScore(k=10)],
 )
 print(metrics.evaluate())
-# 0.54

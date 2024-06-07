@@ -29,7 +29,7 @@ from ebrec.utils._articles import create_article_id_to_value_mapping
 from ebrec.utils._nlp import get_transformers_word_embeddings
 from ebrec.utils._python import write_submission_file, rank_predictions_by_score
 
-from ebrec.models.newsrec.dataloader import NRMSDataLoader, NRMSDataLoaderTransformed
+from ebrec.models.newsrec.dataloader import NRMSDataLoader, NRMSDataLoaderPretransform
 from ebrec.models.newsrec.model_config import hparams_nrms
 from ebrec.models.newsrec import NRMSModel
 
@@ -129,7 +129,7 @@ COLUMNS_DATALOAD = [
     DEFAULT_INVIEW_ARTICLES_COL,
     DEFAULT_LABELS_COL,
 ]
-train_loader = NRMSDataLoaderTransformed(
+train_loader = NRMSDataLoaderPretransform(
     behaviors=df_train.select(COLUMNS_DATALOAD),
     article_dict=article_mapping,
     unknown_representation="zeros",
@@ -137,7 +137,7 @@ train_loader = NRMSDataLoaderTransformed(
     eval_mode=False,
     batch_size=32,
 )
-val_loader = NRMSDataLoaderTransformed(
+val_loader = NRMSDataLoaderPretransform(
     behaviors=df_val.select(COLUMNS_DATALOAD),
     article_dict=article_mapping,
     unknown_representation="zeros",
@@ -145,7 +145,7 @@ val_loader = NRMSDataLoaderTransformed(
     eval_mode=False,
     batch_size=32,
 )
-test_loader = NRMSDataLoaderTransformed(
+test_loader = NRMSDataLoaderPretransform(
     behaviors=df_test.select(COLUMNS_DATALOAD),
     article_dict=article_mapping,
     unknown_representation="zeros",

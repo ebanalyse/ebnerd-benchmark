@@ -120,9 +120,9 @@ class NRMSDataLoader(NewsrecDataLoader):
 
 
 @dataclass
-class NRMSDataLoaderTransformed(NewsrecDataLoader):
+class NRMSDataLoaderPretransform(NewsrecDataLoader):
     """
-    In the post init pre-transform the entire DataFrame. This is useful for
+    In the __post_init__ pre-transform the entire DataFrame. This is useful for
     when data can fit in memory, as it will be much faster ones training.
     Note, it might not be as scaleable.
     """

@@ -128,9 +128,10 @@ print(
     f"Avg. title len. (words): {title_desc[list(title_desc)[0]]} \pm {title_desc[list(title_desc)[1]]}"
 )
 print(
-    f"Avg. title len. (words): {subtitle_desc[list(subtitle_desc)[0]]} \pm {subtitle_desc[list(subtitle_desc)[0]]}"
+    f"Avg. subtitle len. (words): {subtitle_desc[list(subtitle_desc)[0]]} \pm {subtitle_desc[list(subtitle_desc)[0]]}"
 )
 print(
-    f"Avg. title len. (words): {body_desc[list(body_desc)[0]]} \pm {body_desc[list(body_desc)[1]]}"
+    f"Avg. body len. (words): {body_desc[list(body_desc)[0]]} \pm {body_desc[list(body_desc)[1]]}"
 )
+#
 print("Avg. history len.: {:.2f} \pm {:.2f}".format(hist_mean, hist_std))

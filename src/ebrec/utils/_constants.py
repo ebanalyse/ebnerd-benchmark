@@ -1,7 +1,8 @@
 # BEHAVIORS
 DEFAULT_IMPRESSION_TIMESTAMP_COL = "impression_time"
-DEFAULT_SCROLL_PERCENTAGE_COL = "scroll_percentage"
+DEFAULT_IS_BEYOND_ACCURACY_COL = "is_beyond_accuracy"
 DEFAULT_CLICKED_ARTICLES_COL = "article_ids_clicked"
+DEFAULT_SCROLL_PERCENTAGE_COL = "scroll_percentage"
 DEFAULT_INVIEW_ARTICLES_COL = "article_ids_inview"
 DEFAULT_IMPRESSION_ID_COL = "impression_id"
 DEFAULT_IS_SUBSCRIBER_COL = "is_subscriber"

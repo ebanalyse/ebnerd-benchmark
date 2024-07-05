@@ -9,7 +9,7 @@ from ebrec.utils._python import (
 )
 from ebrec.utils._constants import *
 
-PATH = Path("/Users/johannes.kruse/ebnerd_data/ebnerd_testset")
+PATH = Path("~/ebnerd_data/ebnerd_testset")
 
 df_behaviors = pl.scan_parquet(PATH.joinpath("test", "behaviors.parquet"))
 df_articles = pl.scan_parquet(PATH.joinpath("articles.parquet"))
@@ -105,9 +105,11 @@ for col, scores in zip(
     ],
     [clicked_scores, inview_scores, inview_estimate_scores, readtime_scores],
 ):
+    print("Writing submission file for:", col)
+    Path("downloads").mkdir(exist_ok=True)
     write_submission_file(
         impression_ids=impression_id,
         prediction_scores=scores,
-        path=PATH.joinpath("predictions.txt"),
+        path="downloads/predictions.txt",
         filename_zip=f"{col}.zip",
     )

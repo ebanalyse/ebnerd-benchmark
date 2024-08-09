@@ -18,15 +18,35 @@ def mrr_score(y_true: np.ndarray, y_pred: np.ndarray) -> float:
         The function assumes higher scores in `y_pred` indicate higher relevance.
 
     Examples:
-        >>> y_true = np.array([1, 0, 0, 1, 0])
-        >>> y_pred = np.array([0.5, 0.2, 0.1, 0.8, 0.4])
-        >>> mrr_score(y_true, y_pred)
-            0.25
+        >>> y_true_1 = np.array([0, 0, 1])
+        >>> y_pred_1 = np.array([0.5, 0.2, 0.1])
+        >>> mrr_score(y_true_1, y_pred_1)
+            0.33
+
+        >>> y_true_2 = np.array([0, 1, 1])
+        >>> y_pred_2 = np.array([0.5, 0.2, 0.1])
+        >>> mrr_score(y_true_2, y_pred_2)
+            0.5
+
+        >>> y_true_3 = np.array([1, 1, 0])
+        >>> y_pred_3 = np.array([0.5, 0.2, 0.1])
+        >>> mrr_score(y_true_3, y_pred_3)
+            1.0
+
+        >>> np.mean(
+                [
+                    mrr_score(y_true, y_pred)
+                    for y_true, y_pred in zip(
+                        [y_true_1, y_true_2, y_true_3], [y_pred_1, y_pred_2, y_pred_3]
+                    )
+                ]
+            )
+            0.61
     """
     order = np.argsort(y_pred)[::-1]
     y_true = np.take(y_true, order)
-    rr_score = y_true / (np.arange(len(y_true)) + 1)
-    return np.sum(rr_score) / np.sum(y_true)
+    first_positive_rank = np.argmax(y_true) + 1
+    return 1.0 / first_positive_rank
 
 
 def dcg_score(y_true: np.ndarray, y_pred: np.ndarray, k: int = 10) -> float:

@@ -28,7 +28,7 @@ from ebrec.utils._python import create_lookup_dict
 
 def create_binary_labels_column(
     df: pl.DataFrame,
-    shuffle: bool = True,
+    shuffle: bool = False,
     seed: int = None,
     clicked_col: str = DEFAULT_CLICKED_ARTICLES_COL,
     inview_col: str = DEFAULT_INVIEW_ARTICLES_COL,

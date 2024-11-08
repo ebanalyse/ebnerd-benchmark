@@ -1,6 +1,7 @@
 from transformers import AutoTokenizer, AutoModel
 from pathlib import Path
 import tensorflow as tf
+import datetime as dt
 import polars as pl
 import os
 
@@ -65,7 +66,7 @@ def ebnerd_from_path(path: Path, history_size: int = 30) -> pl.DataFrame:
 
 
 PATH = Path("~/ebnerd_data")
-DATASPLIT = "ebnerd_small"
+DATASPLIT = "ebnerd_large"
 
 COLUMNS = [
     DEFAULT_USER_COL,
@@ -74,11 +75,11 @@ COLUMNS = [
     DEFAULT_CLICKED_ARTICLES_COL,
     DEFAULT_IMPRESSION_ID_COL,
 ]
-HISTORY_SIZE = 10
+HISTORY_SIZE = 20
 FRACTION = 1.0
 
 df_training = (
-    ebnerd_from_path(PATH.joinpath(DATASPLIT, "train"), history_size=HISTORY_SIZE)
+    ebnerd_from_path(PATH.joinpath(DATASPLIT, "validation"), history_size=HISTORY_SIZE)
     .select(COLUMNS)
     .pipe(
         sampling_strategy_wu2019,
@@ -90,22 +91,21 @@ df_training = (
     .pipe(create_binary_labels_column)
     .sample(fraction=FRACTION)
 )
-df_train, df_val = split_df(df_training, 0.8)
+df_train, df_val = split_df(df_training, 0.9)
 
 df_test = (
-    ebnerd_from_path(PATH.joinpath(DATASPLIT, "validation"), history_size=HISTORY_SIZE)
+    ebnerd_from_path(PATH.joinpath("ebnerd_testset", "test"), history_size=HISTORY_SIZE)
     .select(COLUMNS)
     .pipe(create_binary_labels_column)
     .sample(fraction=FRACTION)
 )
 df_articles = pl.read_parquet(PATH.joinpath("articles.parquet"))
-
+# df_test = df_val
 # df_train = df_train[:50]
 # df_val = df_val[:50]
 # df_test = df_test[:50]
 
 # =>
-os.environ["TOKENIZERS_PARALLELISM"] = "false"  # or "true"
 TRANSFORMER_MODEL_NAME = "FacebookAI/xlm-roberta-base"
 TEXT_COLUMNS_TO_USE = [DEFAULT_TITLE_COL, DEFAULT_SUBTITLE_COL]
 MAX_TITLE_LENGTH = 30
@@ -129,7 +129,7 @@ COLUMNS_DATALOAD = [
     DEFAULT_INVIEW_ARTICLES_COL,
     DEFAULT_LABELS_COL,
 ]
-train_loader = NRMSDataLoaderPretransform(
+train_loader = NRMSDataLoader(
     behaviors=df_train.select(COLUMNS_DATALOAD),
     article_dict=article_mapping,
     unknown_representation="zeros",
@@ -137,7 +137,7 @@ train_loader = NRMSDataLoaderPretransform(
     eval_mode=False,
     batch_size=32,
 )
-val_loader = NRMSDataLoaderPretransform(
+val_loader = NRMSDataLoader(
     behaviors=df_val.select(COLUMNS_DATALOAD),
     article_dict=article_mapping,
     unknown_representation="zeros",
@@ -145,7 +145,7 @@ val_loader = NRMSDataLoaderPretransform(
     eval_mode=False,
     batch_size=32,
 )
-test_loader = NRMSDataLoaderPretransform(
+test_loader = NRMSDataLoader(
     behaviors=df_test.select(COLUMNS_DATALOAD),
     article_dict=article_mapping,
     unknown_representation="zeros",
@@ -171,6 +171,11 @@ model = NRMSModel(
     word2vec_embedding=word2vec_embedding,
     seed=42,
 )
+
+devices = tf.config.list_physical_devices()
+for device in devices:
+    print(device)
+
 hist = model.model.fit(
     train_loader,
     validation_data=val_loader,
@@ -180,12 +185,20 @@ hist = model.model.fit(
 
 # =>
 pred_validation = model.scorer.predict(test_loader)
-df_test = add_prediction_scores(df_test, pred_validation.tolist())
-
-# =>
-metrics = MetricEvaluator(
-    labels=df_test["labels"].to_list(),
-    predictions=df_test["scores"].to_list(),
-    metric_functions=[AucScore(), MrrScore(), NdcgScore(k=5), NdcgScore(k=10)],
+df_test = add_prediction_scores(
+    df_test,
+    pred_validation.tolist(),
+    prediction_scores_col="scores",
 )
-print(metrics.evaluate())
+
+df_test = df_test.with_columns(
+    pl.col("scores")
+    .map_elements(lambda x: list(rank_predictions_by_score(x)))
+    .alias("ranked_scores")
+)
+
+write_submission_file(
+    impression_ids=df_test[DEFAULT_IMPRESSION_ID_COL],
+    prediction_scores=df_test["ranked_scores"],
+    path=f"downloads/predictions_{dt.datetime.now()}.txt",
+)

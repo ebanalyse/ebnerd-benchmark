@@ -1,6 +1,7 @@
 from transformers import AutoTokenizer, AutoModel
 from pathlib import Path
 import tensorflow as tf
+import datetime as dt
 import polars as pl
 import os
 
@@ -68,7 +69,7 @@ def ebnerd_from_path(path: Path, history_size: int = 30) -> pl.DataFrame:
 
 PATH = Path("~/ebnerd_data").expanduser()
 DATASPLIT = "ebnerd_demo"
-DUMP_DIR = PATH.joinpath("downloads")
+DUMP_DIR = PATH.joinpath("ebnerd_predictions")
 DUMP_DIR.mkdir(exist_ok=True, parents=True)
 
 COLUMNS = [
@@ -79,7 +80,7 @@ COLUMNS = [
     DEFAULT_IMPRESSION_ID_COL,
 ]
 HISTORY_SIZE = 20
-FRACTION = 0.01
+FRACTION = 1.0
 
 df_train = (
     ebnerd_from_path(PATH.joinpath(DATASPLIT, "train"), history_size=HISTORY_SIZE)
@@ -114,10 +115,8 @@ df_test = (
     .pipe(create_binary_labels_column)
 )
 
+# df_test = df_validation
 df_articles = pl.read_parquet(PATH.joinpath("articles.parquet"))
-# df_train = df_train[:50]
-# df_val = df_val[:50]
-# df_test = df_test[:50]
 
 # =>
 TRANSFORMER_MODEL_NAME = "FacebookAI/xlm-roberta-base"
@@ -179,12 +178,33 @@ model = NRMSModel(
     word2vec_embedding=word2vec_embedding,
     seed=42,
 )
-# hist = model.model.fit(
-#     train_dataloader,
-#     validation_data=val_dataloader,
-#     epochs=1,
-#     callbacks=[tensorboard_callback, early_stopping],
-# )
+hist = model.model.fit(
+    train_dataloader,
+    validation_data=val_dataloader,
+    epochs=1,
+    callbacks=[tensorboard_callback, early_stopping],
+)
 
-breakpoint()
-pred_validation = model.scorer.predict(test_dataloader)
+# =>
+pred_test = model.scorer.predict(test_dataloader)
+df_test = add_prediction_scores(df_test, pred_test.tolist())
+
+# metrics = MetricEvaluator(
+#     labels=df_validation["labels"].to_list(),
+#     predictions=df_validation["scores"].to_list(),
+#     metric_functions=[AucScore(), MrrScore(), NdcgScore(k=5), NdcgScore(k=10)],
+# )
+# metrics.evaluate()
+
+df_test = df_test.with_columns(
+    pl.col("scores")
+    .map_elements(lambda x: list(rank_predictions_by_score(x)))
+    .alias("ranked_scores")
+)
+
+write_submission_file(
+    impression_ids=df_test[DEFAULT_IMPRESSION_ID_COL],
+    prediction_scores=df_test["ranked_scores"],
+    path=DUMP_DIR.joinpath("predictions.txt"),
+    filename_zip=f"{DATASPLIT}_predictions-{dt.datetime.now()}.zip",
+)

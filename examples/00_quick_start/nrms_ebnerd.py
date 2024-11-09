@@ -1,7 +1,6 @@
 from transformers import AutoTokenizer, AutoModel
 from pathlib import Path
 import tensorflow as tf
-import datetime as dt
 import polars as pl
 import os
 
@@ -25,7 +24,7 @@ from ebrec.utils._behaviors import (
 )
 from ebrec.evaluation import MetricEvaluator, AucScore, NdcgScore, MrrScore
 from ebrec.utils._articles import convert_text2encoding_with_transformers
-from ebrec.utils._polars import concat_str_columns, slice_join_dataframes, split_df
+from ebrec.utils._polars import concat_str_columns, slice_join_dataframes
 from ebrec.utils._articles import create_article_id_to_value_mapping
 from ebrec.utils._nlp import get_transformers_word_embeddings
 from ebrec.utils._python import write_submission_file, rank_predictions_by_score
@@ -33,6 +32,8 @@ from ebrec.utils._python import write_submission_file, rank_predictions_by_score
 from ebrec.models.newsrec.dataloader import NRMSDataLoader
 from ebrec.models.newsrec.model_config import hparams_nrms
 from ebrec.models.newsrec import NRMSModel
+
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 # python examples/00_quick_start/nrms_ebnerd.py
 
@@ -65,8 +66,10 @@ def ebnerd_from_path(path: Path, history_size: int = 30) -> pl.DataFrame:
     return df_behaviors
 
 
-PATH = Path("~/ebnerd_data")
-DATASPLIT = "ebnerd_small"
+PATH = Path("~/ebnerd_data").expanduser()
+DATASPLIT = "ebnerd_demo"
+DUMP_DIR = PATH.joinpath("downloads")
+DUMP_DIR.mkdir(exist_ok=True, parents=True)
 
 COLUMNS = [
     DEFAULT_USER_COL,
@@ -76,10 +79,11 @@ COLUMNS = [
     DEFAULT_IMPRESSION_ID_COL,
 ]
 HISTORY_SIZE = 20
-FRACTION = 0.1
+FRACTION = 0.01
 
-df_training = (
-    ebnerd_from_path(PATH.joinpath(DATASPLIT, "validation"), history_size=HISTORY_SIZE)
+df_train = (
+    ebnerd_from_path(PATH.joinpath(DATASPLIT, "train"), history_size=HISTORY_SIZE)
+    .sample(fraction=FRACTION)
     .select(COLUMNS)
     .pipe(
         sampling_strategy_wu2019,
@@ -89,31 +93,38 @@ df_training = (
         seed=123,
     )
     .pipe(create_binary_labels_column)
-    .sample(fraction=FRACTION)
 )
-df_train, df_val = split_df(df_training, 0.9)
+# =>
+df_validation = (
+    ebnerd_from_path(PATH.joinpath(DATASPLIT, "validation"), history_size=HISTORY_SIZE)
+    .sample(fraction=FRACTION)
+    .select(COLUMNS)
+    .pipe(create_binary_labels_column)
+)
 
 df_test = (
     ebnerd_from_path(PATH.joinpath("ebnerd_testset", "test"), history_size=HISTORY_SIZE)
+    .sample(fraction=FRACTION)
     .with_columns(
-        (pl.col(DEFAULT_INVIEW_ARTICLES_COL).list.eval(pl.element() * 0)).alias(
-            DEFAULT_LABELS_COL
-        )
+        pl.col(DEFAULT_INVIEW_ARTICLES_COL)
+        .list.first()
+        .alias(DEFAULT_CLICKED_ARTICLES_COL)
     )
     .select(COLUMNS)
+    .pipe(create_binary_labels_column)
 )
+
 df_articles = pl.read_parquet(PATH.joinpath("articles.parquet"))
-df_test = df_val
 # df_train = df_train[:50]
 # df_val = df_val[:50]
 # df_test = df_test[:50]
 
 # =>
 TRANSFORMER_MODEL_NAME = "FacebookAI/xlm-roberta-base"
-TEXT_COLUMNS_TO_USE = [DEFAULT_TITLE_COL, DEFAULT_SUBTITLE_COL]
-MAX_TITLE_LENGTH = 20
+TEXT_COLUMNS_TO_USE = [DEFAULT_SUBTITLE_COL, DEFAULT_TITLE_COL]
+MAX_TITLE_LENGTH = 30
 
-# => LOAD HUGGINGFACE:
+# LOAD HUGGINGFACE:
 transformer_model = AutoModel.from_pretrained(TRANSFORMER_MODEL_NAME)
 transformer_tokenizer = AutoTokenizer.from_pretrained(TRANSFORMER_MODEL_NAME)
 
@@ -127,29 +138,26 @@ df_articles, token_col_title = convert_text2encoding_with_transformers(
 article_mapping = create_article_id_to_value_mapping(
     df=df_articles, value_col=token_col_title
 )
-COLUMNS_DATALOAD = [
-    DEFAULT_HISTORY_ARTICLE_ID_COL,
-    DEFAULT_INVIEW_ARTICLES_COL,
-    DEFAULT_LABELS_COL,
-]
-train_loader = NRMSDataLoader(
-    behaviors=df_train.select(COLUMNS_DATALOAD),
+
+# =>
+train_dataloader = NRMSDataLoader(
+    behaviors=df_train,
     article_dict=article_mapping,
     unknown_representation="zeros",
     history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
     eval_mode=False,
-    batch_size=32,
+    batch_size=64,
 )
-val_loader = NRMSDataLoader(
-    behaviors=df_val.select(COLUMNS_DATALOAD),
+val_dataloader = NRMSDataLoader(
+    behaviors=df_validation,
     article_dict=article_mapping,
     unknown_representation="zeros",
     history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
-    eval_mode=False,
+    eval_mode=True,
     batch_size=32,
 )
-test_loader = NRMSDataLoader(
-    behaviors=df_test.select(COLUMNS_DATALOAD),
+test_dataloader = NRMSDataLoader(
+    behaviors=df_test,
     article_dict=article_mapping,
     unknown_representation="zeros",
     history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
@@ -161,11 +169,9 @@ MODEL_NAME = "NRMS"
 LOG_DIR = f"downloads/runs/{MODEL_NAME}"
 MODEL_WEIGHTS = f"downloads/data/state_dict/{MODEL_NAME}/weights"
 
-# => CALLBACKS
+# CALLBACKS
 tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=LOG_DIR, histogram_freq=1)
 early_stopping = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=2)
-
-del transformer_model, transformer_tokenizer
 
 hparams_nrms.history_size = HISTORY_SIZE
 model = NRMSModel(
@@ -173,39 +179,12 @@ model = NRMSModel(
     word2vec_embedding=word2vec_embedding,
     seed=42,
 )
-
-devices = tf.config.list_physical_devices()
-for device in devices:
-    print(device)
-
-
 # hist = model.model.fit(
-#     train_loader,
-#     validation_data=val_loader,
-#     epochs=5,
+#     train_dataloader,
+#     validation_data=val_dataloader,
+#     epochs=1,
 #     callbacks=[tensorboard_callback, early_stopping],
 # )
-# =>
-# breakpoint()
-pred_validation = model.scorer.predict(train_loader)
-pred_validation = model.scorer(train_loader)
 
-df_test = add_prediction_scores(
-    df_test,
-    pred_validation.tolist(),
-    prediction_scores_col="scores",
-)
-
-df_test = df_test.with_columns(
-    pl.col("scores")
-    .map_elements(lambda x: list(rank_predictions_by_score(x)))
-    .alias("ranked_scores")
-)
-
-write_submission_file(
-    impression_ids=df_test[DEFAULT_IMPRESSION_ID_COL],
-    prediction_scores=df_test["ranked_scores"],
-    path=f"downloads/predictions_{DATASPLIT}_{dt.datetime.now()}.txt",
-    # TODO: fix it to this
-    # filename_zip="predictions_{DATASPLIT}_{dt.datetime.now()}"
-)
+breakpoint()
+pred_validation = model.scorer.predict(test_dataloader)

@@ -30,7 +30,7 @@ from ebrec.utils._articles import create_article_id_to_value_mapping
 from ebrec.utils._nlp import get_transformers_word_embeddings
 from ebrec.utils._python import write_submission_file, rank_predictions_by_score
 
-from ebrec.models.newsrec.dataloader import NRMSDataLoader, NRMSDataLoaderPretransform
+from ebrec.models.newsrec.dataloader import NRMSDataLoader
 from ebrec.models.newsrec.model_config import hparams_nrms
 from ebrec.models.newsrec import NRMSModel
 
@@ -66,7 +66,7 @@ def ebnerd_from_path(path: Path, history_size: int = 30) -> pl.DataFrame:
 
 
 PATH = Path("~/ebnerd_data")
-DATASPLIT = "ebnerd_large"
+DATASPLIT = "ebnerd_small"
 
 COLUMNS = [
     DEFAULT_USER_COL,
@@ -76,7 +76,7 @@ COLUMNS = [
     DEFAULT_IMPRESSION_ID_COL,
 ]
 HISTORY_SIZE = 20
-FRACTION = 1.0
+FRACTION = 0.1
 
 df_training = (
     ebnerd_from_path(PATH.joinpath(DATASPLIT, "validation"), history_size=HISTORY_SIZE)
@@ -95,12 +95,15 @@ df_train, df_val = split_df(df_training, 0.9)
 
 df_test = (
     ebnerd_from_path(PATH.joinpath("ebnerd_testset", "test"), history_size=HISTORY_SIZE)
+    .with_columns(
+        (pl.col(DEFAULT_INVIEW_ARTICLES_COL).list.eval(pl.element() * 0)).alias(
+            DEFAULT_LABELS_COL
+        )
+    )
     .select(COLUMNS)
-    .pipe(create_binary_labels_column)
-    .sample(fraction=FRACTION)
 )
 df_articles = pl.read_parquet(PATH.joinpath("articles.parquet"))
-# df_test = df_val
+df_test = df_val
 # df_train = df_train[:50]
 # df_val = df_val[:50]
 # df_test = df_test[:50]
@@ -108,7 +111,7 @@ df_articles = pl.read_parquet(PATH.joinpath("articles.parquet"))
 # =>
 TRANSFORMER_MODEL_NAME = "FacebookAI/xlm-roberta-base"
 TEXT_COLUMNS_TO_USE = [DEFAULT_TITLE_COL, DEFAULT_SUBTITLE_COL]
-MAX_TITLE_LENGTH = 30
+MAX_TITLE_LENGTH = 20
 
 # => LOAD HUGGINGFACE:
 transformer_model = AutoModel.from_pretrained(TRANSFORMER_MODEL_NAME)
@@ -161,9 +164,8 @@ MODEL_WEIGHTS = f"downloads/data/state_dict/{MODEL_NAME}/weights"
 # => CALLBACKS
 tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=LOG_DIR, histogram_freq=1)
 early_stopping = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=2)
-# modelcheckpoint = tf.keras.callbacks.ModelCheckpoint(
-#     filepath=MODEL_WEIGHTS, save_best_only=True, save_weights_only=True, verbose=1
-# )
+
+del transformer_model, transformer_tokenizer
 
 hparams_nrms.history_size = HISTORY_SIZE
 model = NRMSModel(
@@ -176,15 +178,18 @@ devices = tf.config.list_physical_devices()
 for device in devices:
     print(device)
 
-hist = model.model.fit(
-    train_loader,
-    validation_data=val_loader,
-    epochs=10,
-    callbacks=[tensorboard_callback, early_stopping],
-)
 
+# hist = model.model.fit(
+#     train_loader,
+#     validation_data=val_loader,
+#     epochs=5,
+#     callbacks=[tensorboard_callback, early_stopping],
+# )
 # =>
-pred_validation = model.scorer.predict(test_loader)
+# breakpoint()
+pred_validation = model.scorer.predict(train_loader)
+pred_validation = model.scorer(train_loader)
+
 df_test = add_prediction_scores(
     df_test,
     pred_validation.tolist(),
@@ -200,5 +205,7 @@ df_test = df_test.with_columns(
 write_submission_file(
     impression_ids=df_test[DEFAULT_IMPRESSION_ID_COL],
     prediction_scores=df_test["ranked_scores"],
-    path=f"downloads/predictions_{dt.datetime.now()}.txt",
+    path=f"downloads/predictions_{DATASPLIT}_{dt.datetime.now()}.txt",
+    # TODO: fix it to this
+    # filename_zip="predictions_{DATASPLIT}_{dt.datetime.now()}"
 )

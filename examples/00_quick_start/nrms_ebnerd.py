@@ -36,6 +36,7 @@ from ebrec.models.newsrec import NRMSModel
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
+# conda activate ./venv/
 # python examples/00_quick_start/nrms_ebnerd.py
 
 
@@ -68,7 +69,7 @@ def ebnerd_from_path(path: Path, history_size: int = 30) -> pl.DataFrame:
 
 
 PATH = Path("~/ebnerd_data").expanduser()
-DATASPLIT = "ebnerd_demo"
+DATASPLIT = "ebnerd_small"
 DUMP_DIR = PATH.joinpath("ebnerd_predictions")
 DUMP_DIR.mkdir(exist_ok=True, parents=True)
 
@@ -112,10 +113,17 @@ df_test = (
         .alias(DEFAULT_CLICKED_ARTICLES_COL)
     )
     .select(COLUMNS)
-    .pipe(create_binary_labels_column)
+    .with_columns(
+        pl.col(DEFAULT_INVIEW_ARTICLES_COL)
+        .list.eval(pl.element() * 0)
+        .alias(DEFAULT_LABELS_COL)
+    )
 )
 
 # df_test = df_validation
+# df_train = df_train[:100]
+# df_validation = df_validation[:100]
+# df_test = df_test[:100]
 df_articles = pl.read_parquet(PATH.joinpath("articles.parquet"))
 
 # =>

@@ -35,7 +35,6 @@ from ebrec.models.newsrec.model_config import hparams_nrms
 from ebrec.models.newsrec import NRMSModel
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
-
 # conda activate ./venv/
 # python examples/00_quick_start/nrms_ebnerd.py
 

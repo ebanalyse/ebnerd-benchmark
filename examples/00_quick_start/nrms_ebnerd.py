@@ -3,6 +3,7 @@ from pathlib import Path
 import tensorflow as tf
 import datetime as dt
 import polars as pl
+import numpy as np
 import gc
 import os
 
@@ -26,16 +27,20 @@ from ebrec.utils._behaviors import (
 )
 from ebrec.evaluation import MetricEvaluator, AucScore, NdcgScore, MrrScore
 from ebrec.utils._articles import convert_text2encoding_with_transformers
-from ebrec.utils._polars import concat_str_columns, slice_join_dataframes
+from ebrec.utils._polars import concat_str_columns, slice_join_dataframes, split_df
 from ebrec.utils._articles import create_article_id_to_value_mapping
 from ebrec.utils._nlp import get_transformers_word_embeddings
 from ebrec.utils._python import write_submission_file, rank_predictions_by_score
 
-from ebrec.models.newsrec.dataloader import NRMSDataLoader
+from ebrec.models.newsrec.dataloader import NRMSDataLoader, NRMSDataLoaderPretransform
 from ebrec.models.newsrec.model_config import hparams_nrms
 from ebrec.models.newsrec import NRMSModel
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
+gpus = tf.config.experimental.list_physical_devices("GPU")
+for gpu in gpus:
+    tf.config.experimental.set_memory_growth(gpu, True)
+
 # conda activate ./venv/
 # python examples/00_quick_start/nrms_ebnerd.py
 
@@ -76,6 +81,9 @@ DT_NOW = dt.datetime.now()
 MODEL_NAME = f"NRMS-{DT_NOW}"
 MODEL_WEIGHTS = DUMP_DIR.joinpath(f"state_dict/{MODEL_NAME}/weights")
 LOG_DIR = DUMP_DIR.joinpath(f"runs/{MODEL_NAME}")
+SEED = np.random.randint(0, 1000)
+
+print(f"Dir: {MODEL_NAME}")
 
 DATASPLIT = "ebnerd_small"
 HISTORY_SIZE = 20
@@ -91,7 +99,7 @@ COLUMNS = [
 ]
 
 df_train = (
-    ebnerd_from_path(PATH.joinpath(DATASPLIT, "train"), history_size=HISTORY_SIZE)
+    ebnerd_from_path(PATH.joinpath(DATASPLIT, "validation"), history_size=HISTORY_SIZE)
     .sample(fraction=FRACTION)
     .select(COLUMNS)
     .pipe(
@@ -103,13 +111,8 @@ df_train = (
     )
     .pipe(create_binary_labels_column)
 )
+df_train, df_validation = split_df(df_train, fraction=0.9, seed=SEED, shuffle=False)
 # =>
-df_validation = (
-    ebnerd_from_path(PATH.joinpath(DATASPLIT, "validation"), history_size=HISTORY_SIZE)
-    .sample(fraction=FRACTION)
-    .select(COLUMNS)
-    .pipe(create_binary_labels_column)
-)
 
 df_test = (
     ebnerd_from_path(PATH.joinpath("ebnerd_testset", "test"), history_size=HISTORY_SIZE)
@@ -154,7 +157,7 @@ article_mapping = create_article_id_to_value_mapping(
 )
 
 # =>
-train_dataloader = NRMSDataLoader(
+train_dataloader = NRMSDataLoaderPretransform(
     behaviors=df_train,
     article_dict=article_mapping,
     unknown_representation="zeros",
@@ -162,21 +165,21 @@ train_dataloader = NRMSDataLoader(
     eval_mode=False,
     batch_size=32,
 )
-val_dataloader = NRMSDataLoader(
+val_dataloader = NRMSDataLoaderPretransform(
     behaviors=df_validation,
     article_dict=article_mapping,
     unknown_representation="zeros",
     history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
-    eval_mode=True,
-    batch_size=32,
+    eval_mode=False,
+    batch_size=64,
 )
-test_dataloader = NRMSDataLoader(
+test_dataloader = NRMSDataLoaderPretransform(
     behaviors=df_test,
     article_dict=article_mapping,
     unknown_representation="zeros",
     history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
     eval_mode=True,
-    batch_size=32,
+    batch_size=16,
 )
 
 # CALLBACKS

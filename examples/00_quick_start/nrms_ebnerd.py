@@ -76,19 +76,19 @@ def ebnerd_from_path(path: Path, history_size: int = 30) -> pl.DataFrame:
 PATH = Path("~/ebnerd_data").expanduser()
 DUMP_DIR = PATH.joinpath("ebnerd_predictions")
 DUMP_DIR.mkdir(exist_ok=True, parents=True)
-DT_NOW = dt.datetime.now()
+SEED = np.random.randint(0, 1_000_000_000)
 
-MODEL_NAME = f"NRMS-{DT_NOW}"
+MODEL_NAME = f"NRMS-{SEED}"
 MODEL_WEIGHTS = DUMP_DIR.joinpath(f"state_dict/{MODEL_NAME}/weights")
 LOG_DIR = DUMP_DIR.joinpath(f"runs/{MODEL_NAME}")
-SEED = np.random.randint(0, 1000)
 
 print(f"Dir: {MODEL_NAME}")
 
 DATASPLIT = "ebnerd_small"
+MAX_TITLE_LENGTH = 30
 HISTORY_SIZE = 20
-FRACTION = 1.0
-EPOCHS = 5
+FRACTION = 0.01
+EPOCHS = 1
 
 COLUMNS = [
     DEFAULT_USER_COL,
@@ -112,23 +112,6 @@ df_train = (
     .pipe(create_binary_labels_column)
 )
 df_train, df_validation = split_df(df_train, fraction=0.9, seed=SEED, shuffle=False)
-# =>
-
-df_test = (
-    ebnerd_from_path(PATH.joinpath("ebnerd_testset", "test"), history_size=HISTORY_SIZE)
-    .sample(fraction=FRACTION)
-    .with_columns(
-        pl.col(DEFAULT_INVIEW_ARTICLES_COL)
-        .list.first()
-        .alias(DEFAULT_CLICKED_ARTICLES_COL)
-    )
-    .select(COLUMNS)
-    .with_columns(
-        pl.col(DEFAULT_INVIEW_ARTICLES_COL)
-        .list.eval(pl.element() * 0)
-        .alias(DEFAULT_LABELS_COL)
-    )
-)
 
 # df_test = df_validation
 # df_train = df_train[:100]
@@ -139,7 +122,6 @@ df_articles = pl.read_parquet(PATH.joinpath("articles.parquet"))
 # =>
 TRANSFORMER_MODEL_NAME = "FacebookAI/xlm-roberta-base"
 TEXT_COLUMNS_TO_USE = [DEFAULT_SUBTITLE_COL, DEFAULT_TITLE_COL]
-MAX_TITLE_LENGTH = 30
 
 # LOAD HUGGINGFACE:
 transformer_model = AutoModel.from_pretrained(TRANSFORMER_MODEL_NAME)
@@ -171,15 +153,7 @@ val_dataloader = NRMSDataLoaderPretransform(
     unknown_representation="zeros",
     history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
     eval_mode=False,
-    batch_size=64,
-)
-test_dataloader = NRMSDataLoaderPretransform(
-    behaviors=df_test,
-    article_dict=article_mapping,
-    unknown_representation="zeros",
-    history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
-    eval_mode=True,
-    batch_size=16,
+    batch_size=32,
 )
 
 # CALLBACKS
@@ -209,7 +183,6 @@ del (
     val_dataloader,
     df_validation,
     df_train,
-    df_test,
 )
 gc.collect()
 
@@ -220,6 +193,30 @@ print("loading model...")
 model.model.load_weights(MODEL_WEIGHTS)
 
 # =>
+df_test = (
+    ebnerd_from_path(PATH.joinpath("ebnerd_testset", "test"), history_size=HISTORY_SIZE)
+    .sample(fraction=FRACTION)
+    .with_columns(
+        pl.col(DEFAULT_INVIEW_ARTICLES_COL)
+        .list.first()
+        .alias(DEFAULT_CLICKED_ARTICLES_COL)
+    )
+    .select(COLUMNS)
+    .with_columns(
+        pl.col(DEFAULT_INVIEW_ARTICLES_COL)
+        .list.eval(pl.element() * 0)
+        .alias(DEFAULT_LABELS_COL)
+    )
+)
+test_dataloader = NRMSDataLoaderPretransform(
+    behaviors=df_test,
+    article_dict=article_mapping,
+    unknown_representation="zeros",
+    history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
+    eval_mode=True,
+    batch_size=16,
+)
+
 pred_test = model.scorer.predict(test_dataloader)
 df_test = add_prediction_scores(df_test, pred_test.tolist())
 
@@ -240,5 +237,5 @@ write_submission_file(
     impression_ids=df_test[DEFAULT_IMPRESSION_ID_COL],
     prediction_scores=df_test["ranked_scores"],
     path=DUMP_DIR.joinpath("predictions.txt"),
-    filename_zip=f"{DATASPLIT}_predictions-{DT_NOW}.zip",
+    filename_zip=f"{DATASPLIT}_predictions-{SEED}.zip",
 )

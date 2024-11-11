@@ -3,6 +3,7 @@ from pathlib import Path
 import tensorflow as tf
 import datetime as dt
 import polars as pl
+import gc
 import os
 
 from ebrec.utils._constants import (
@@ -68,9 +69,18 @@ def ebnerd_from_path(path: Path, history_size: int = 30) -> pl.DataFrame:
 
 
 PATH = Path("~/ebnerd_data").expanduser()
-DATASPLIT = "ebnerd_small"
 DUMP_DIR = PATH.joinpath("ebnerd_predictions")
 DUMP_DIR.mkdir(exist_ok=True, parents=True)
+DT_NOW = dt.datetime.now()
+
+MODEL_NAME = f"NRMS-{DT_NOW}"
+MODEL_WEIGHTS = DUMP_DIR.joinpath(f"state_dict/{MODEL_NAME}/weights")
+LOG_DIR = DUMP_DIR.joinpath(f"runs/{MODEL_NAME}")
+
+DATASPLIT = "ebnerd_small"
+HISTORY_SIZE = 20
+FRACTION = 1.0
+EPOCHS = 5
 
 COLUMNS = [
     DEFAULT_USER_COL,
@@ -79,8 +89,6 @@ COLUMNS = [
     DEFAULT_CLICKED_ARTICLES_COL,
     DEFAULT_IMPRESSION_ID_COL,
 ]
-HISTORY_SIZE = 20
-FRACTION = 1.0
 
 df_train = (
     ebnerd_from_path(PATH.joinpath(DATASPLIT, "train"), history_size=HISTORY_SIZE)
@@ -152,7 +160,7 @@ train_dataloader = NRMSDataLoader(
     unknown_representation="zeros",
     history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
     eval_mode=False,
-    batch_size=64,
+    batch_size=32,
 )
 val_dataloader = NRMSDataLoader(
     behaviors=df_validation,
@@ -171,13 +179,13 @@ test_dataloader = NRMSDataLoader(
     batch_size=32,
 )
 
-MODEL_NAME = "NRMS"
-LOG_DIR = f"downloads/runs/{MODEL_NAME}"
-MODEL_WEIGHTS = f"downloads/data/state_dict/{MODEL_NAME}/weights"
-
 # CALLBACKS
 tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=LOG_DIR, histogram_freq=1)
 early_stopping = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=2)
+modelcheckpoint = tf.keras.callbacks.ModelCheckpoint(
+    filepath=MODEL_WEIGHTS, save_best_only=True, save_weights_only=True, verbose=1
+)
+
 
 hparams_nrms.history_size = HISTORY_SIZE
 model = NRMSModel(
@@ -188,9 +196,25 @@ model = NRMSModel(
 hist = model.model.fit(
     train_dataloader,
     validation_data=val_dataloader,
-    epochs=1,
+    epochs=EPOCHS,
     callbacks=[tensorboard_callback, early_stopping],
 )
+del (
+    transformer_tokenizer,
+    transformer_model,
+    train_dataloader,
+    val_dataloader,
+    df_validation,
+    df_train,
+    df_test,
+)
+gc.collect()
+
+print("saving model...")
+model.model.save_weights(MODEL_WEIGHTS)
+#
+print("loading model...")
+model.model.load_weights(MODEL_WEIGHTS)
 
 # =>
 pred_test = model.scorer.predict(test_dataloader)
@@ -213,5 +237,5 @@ write_submission_file(
     impression_ids=df_test[DEFAULT_IMPRESSION_ID_COL],
     prediction_scores=df_test["ranked_scores"],
     path=DUMP_DIR.joinpath("predictions.txt"),
-    filename_zip=f"{DATASPLIT}_predictions-{dt.datetime.now()}.zip",
+    filename_zip=f"{DATASPLIT}_predictions-{DT_NOW}.zip",
 )

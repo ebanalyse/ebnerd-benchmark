@@ -78,7 +78,7 @@ DUMP_DIR = PATH.joinpath("ebnerd_predictions")
 DUMP_DIR.mkdir(exist_ok=True, parents=True)
 SEED = np.random.randint(0, 1_000_000_000)
 
-MODEL_NAME = f"NRMS-{SEED}"
+MODEL_NAME = f"NRMS-{SEED}-{dt.datetime.now()}"
 MODEL_WEIGHTS = DUMP_DIR.joinpath(f"state_dict/{MODEL_NAME}/weights")
 LOG_DIR = DUMP_DIR.joinpath(f"runs/{MODEL_NAME}")
 
@@ -87,8 +87,8 @@ print(f"Dir: {MODEL_NAME}")
 DATASPLIT = "ebnerd_small"
 MAX_TITLE_LENGTH = 30
 HISTORY_SIZE = 20
-FRACTION = 0.01
-EPOCHS = 1
+FRACTION = 1.0
+EPOCHS = 5
 
 COLUMNS = [
     DEFAULT_USER_COL,
@@ -237,5 +237,5 @@ write_submission_file(
     impression_ids=df_test[DEFAULT_IMPRESSION_ID_COL],
     prediction_scores=df_test["ranked_scores"],
     path=DUMP_DIR.joinpath("predictions.txt"),
-    filename_zip=f"{DATASPLIT}_predictions-{SEED}.zip",
+    filename_zip=f"{DATASPLIT}_predictions-{MODEL_NAME}.zip",
 )

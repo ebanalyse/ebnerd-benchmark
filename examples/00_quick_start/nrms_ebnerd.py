@@ -74,7 +74,7 @@ def ebnerd_from_path(path: Path, history_size: int = 30) -> pl.DataFrame:
 
 
 PATH = Path("~/ebnerd_data").expanduser()
-DUMP_DIR = PATH.joinpath("ebnerd_predictions")
+DUMP_DIR = Path("ebnerd_predictions")
 DUMP_DIR.mkdir(exist_ok=True, parents=True)
 SEED = np.random.randint(0, 1_000_000_000)
 

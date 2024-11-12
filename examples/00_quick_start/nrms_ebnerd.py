@@ -89,6 +89,8 @@ MAX_TITLE_LENGTH = 30
 HISTORY_SIZE = 20
 FRACTION = 1.0
 EPOCHS = 5
+N_TEST_CHUNKS = 5
+FRACTION_TEST = 1.0
 
 COLUMNS = [
     DEFAULT_USER_COL,
@@ -107,7 +109,7 @@ df_train = (
         npratio=4,
         shuffle=True,
         with_replacement=True,
-        seed=123,
+        seed=SEED,
     )
     .pipe(create_binary_labels_column)
 )
@@ -139,6 +141,7 @@ article_mapping = create_article_id_to_value_mapping(
 )
 
 # =>
+print("Init train- and val-dataloader")
 train_dataloader = NRMSDataLoaderPretransform(
     behaviors=df_train,
     article_dict=article_mapping,
@@ -163,7 +166,6 @@ modelcheckpoint = tf.keras.callbacks.ModelCheckpoint(
     filepath=MODEL_WEIGHTS, save_best_only=True, save_weights_only=True, verbose=1
 )
 
-
 hparams_nrms.history_size = HISTORY_SIZE
 model = NRMSModel(
     hparams=hparams_nrms,
@@ -186,16 +188,19 @@ del (
 )
 gc.collect()
 
-print("saving model...")
-model.model.save_weights(MODEL_WEIGHTS)
-#
-print("loading model...")
+print(f"saving model: {MODEL_WEIGHTS}")
+# model.model.save_weights(MODEL_WEIGHTS)
+print(f"loading model: {MODEL_WEIGHTS}")
 model.model.load_weights(MODEL_WEIGHTS)
+# MODEL_NAME = "NRMS-116591837-2024-11-11 23:50:37.042867"
+# model.model.load_weights(DUMP_DIR.joinpath(f"state_dict/{MODEL_NAME}/weights"))
+
 
 # =>
+print("Init df_test")
 df_test = (
     ebnerd_from_path(PATH.joinpath("ebnerd_testset", "test"), history_size=HISTORY_SIZE)
-    .sample(fraction=FRACTION)
+    .sample(fraction=FRACTION_TEST)
     .with_columns(
         pl.col(DEFAULT_INVIEW_ARTICLES_COL)
         .list.first()
@@ -208,13 +213,14 @@ df_test = (
         .alias(DEFAULT_LABELS_COL)
     )
 )
-test_dataloader = NRMSDataLoaderPretransform(
+print("Init test-dataloader")
+test_dataloader = NRMSDataLoader(
     behaviors=df_test,
     article_dict=article_mapping,
     unknown_representation="zeros",
     history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
     eval_mode=True,
-    batch_size=16,
+    batch_size=64,
 )
 
 pred_test = model.scorer.predict(test_dataloader)

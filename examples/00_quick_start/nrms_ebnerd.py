@@ -76,9 +76,9 @@ def ebnerd_from_path(path: Path, history_size: int = 30) -> pl.DataFrame:
 PATH = Path("~/ebnerd_data").expanduser()
 DUMP_DIR = Path("ebnerd_predictions")
 DUMP_DIR.mkdir(exist_ok=True, parents=True)
-SEED = np.random.randint(0, 1_000_000_000)
+SEED = np.random.randint(0, 1_000)
 
-MODEL_NAME = f"NRMS-{SEED}-{dt.datetime.now()}"
+MODEL_NAME = f"NRMS-{dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}-{SEED}"
 MODEL_WEIGHTS = DUMP_DIR.joinpath(f"state_dict/{MODEL_NAME}/weights")
 LOG_DIR = DUMP_DIR.joinpath(f"runs/{MODEL_NAME}")
 
@@ -189,7 +189,7 @@ del (
 gc.collect()
 
 print(f"saving model: {MODEL_WEIGHTS}")
-# model.model.save_weights(MODEL_WEIGHTS)
+model.model.save_weights(MODEL_WEIGHTS)
 print(f"loading model: {MODEL_WEIGHTS}")
 model.model.load_weights(MODEL_WEIGHTS)
 # MODEL_NAME = "NRMS-116591837-2024-11-11 23:50:37.042867"

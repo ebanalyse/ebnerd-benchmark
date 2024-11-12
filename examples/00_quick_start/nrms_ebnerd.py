@@ -9,6 +9,7 @@ import os
 
 from ebrec.utils._constants import (
     DEFAULT_HISTORY_ARTICLE_ID_COL,
+    DEFAULT_IS_BEYOND_ACCURACY_COL,
     DEFAULT_CLICKED_ARTICLES_COL,
     DEFAULT_INVIEW_ARTICLES_COL,
     DEFAULT_IMPRESSION_ID_COL,
@@ -89,8 +90,14 @@ MAX_TITLE_LENGTH = 30
 HISTORY_SIZE = 20
 FRACTION = 1.0
 EPOCHS = 5
-N_TEST_CHUNKS = 5
 FRACTION_TEST = 1.0
+#
+hparams_nrms.history_size = HISTORY_SIZE
+
+BATCH_SIZE_TRAIN = 32
+BATCH_SIZE_VAL = 64
+BATCH_SIZE_TEST_WO_B = 64
+BATCH_SIZE_TEST_W_B = 4
 
 COLUMNS = [
     DEFAULT_USER_COL,
@@ -148,7 +155,7 @@ train_dataloader = NRMSDataLoaderPretransform(
     unknown_representation="zeros",
     history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
     eval_mode=False,
-    batch_size=32,
+    batch_size=BATCH_SIZE_TRAIN,
 )
 val_dataloader = NRMSDataLoaderPretransform(
     behaviors=df_validation,
@@ -156,7 +163,7 @@ val_dataloader = NRMSDataLoaderPretransform(
     unknown_representation="zeros",
     history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
     eval_mode=False,
-    batch_size=32,
+    batch_size=BATCH_SIZE_VAL,
 )
 
 # CALLBACKS
@@ -166,7 +173,6 @@ modelcheckpoint = tf.keras.callbacks.ModelCheckpoint(
     filepath=MODEL_WEIGHTS, save_best_only=True, save_weights_only=True, verbose=1
 )
 
-hparams_nrms.history_size = HISTORY_SIZE
 model = NRMSModel(
     hparams=hparams_nrms,
     word2vec_embedding=word2vec_embedding,
@@ -192,9 +198,9 @@ print(f"saving model: {MODEL_WEIGHTS}")
 model.model.save_weights(MODEL_WEIGHTS)
 print(f"loading model: {MODEL_WEIGHTS}")
 model.model.load_weights(MODEL_WEIGHTS)
-# MODEL_NAME = "NRMS-116591837-2024-11-11 23:50:37.042867"
+# MODEL_NAME = "NRMS-382861963-2024-11-12 01:34:49.050070"
+# print(f"loaded model: {DUMP_DIR.joinpath(f'state_dict/{MODEL_NAME}/weights')}")
 # model.model.load_weights(DUMP_DIR.joinpath(f"state_dict/{MODEL_NAME}/weights"))
-
 
 # =>
 print("Init df_test")
@@ -206,24 +212,40 @@ df_test = (
         .list.first()
         .alias(DEFAULT_CLICKED_ARTICLES_COL)
     )
-    .select(COLUMNS)
+    .select(COLUMNS + [DEFAULT_IS_BEYOND_ACCURACY_COL])
     .with_columns(
         pl.col(DEFAULT_INVIEW_ARTICLES_COL)
         .list.eval(pl.element() * 0)
         .alias(DEFAULT_LABELS_COL)
     )
 )
+df_test_wo_b = df_test.filter(~pl.col(DEFAULT_IS_BEYOND_ACCURACY_COL))
+df_test_w_b = df_test.filter(pl.col(DEFAULT_IS_BEYOND_ACCURACY_COL))
+
 print("Init test-dataloader")
-test_dataloader = NRMSDataLoader(
-    behaviors=df_test,
+test_dataloader_wo_b = NRMSDataLoader(
+    behaviors=df_test_wo_b,
     article_dict=article_mapping,
     unknown_representation="zeros",
     history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
     eval_mode=True,
-    batch_size=64,
+    batch_size=BATCH_SIZE_TEST_WO_B,
+)
+test_dataloader_w_b = NRMSDataLoader(
+    behaviors=df_test_w_b,
+    article_dict=article_mapping,
+    unknown_representation="zeros",
+    history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
+    eval_mode=True,
+    batch_size=BATCH_SIZE_TEST_W_B,
 )
 
-pred_test = model.scorer.predict(test_dataloader)
+print("Predicting beyond-acuracy")
+pred_test_w = model.scorer.predict(test_dataloader_w_b)
+print("Predicting testset")
+pred_test_wo = model.scorer.predict(test_dataloader_wo_b)
+
+pred_test = np.concatenate([pred_test_wo, pred_test_w])
 df_test = add_prediction_scores(df_test, pred_test.tolist())
 
 # metrics = MetricEvaluator(

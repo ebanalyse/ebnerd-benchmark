@@ -1,3 +1,4 @@
+from tensorflow.keras.backend import clear_session
 from transformers import AutoTokenizer, AutoModel
 from pathlib import Path
 import tensorflow as tf
@@ -28,7 +29,12 @@ from ebrec.utils._behaviors import (
 )
 from ebrec.evaluation import MetricEvaluator, AucScore, NdcgScore, MrrScore
 from ebrec.utils._articles import convert_text2encoding_with_transformers
-from ebrec.utils._polars import concat_str_columns, slice_join_dataframes, split_df
+from ebrec.utils._polars import (
+    slice_join_dataframes,
+    concat_str_columns,
+    chunk_dataframe,
+    split_df,
+)
 from ebrec.utils._articles import create_article_id_to_value_mapping
 from ebrec.utils._nlp import get_transformers_word_embeddings
 from ebrec.utils._python import write_submission_file, rank_predictions_by_score
@@ -95,9 +101,10 @@ FRACTION_TEST = 1.0
 hparams_nrms.history_size = HISTORY_SIZE
 
 BATCH_SIZE_TRAIN = 32
-BATCH_SIZE_VAL = 64
-BATCH_SIZE_TEST_WO_B = 64
+BATCH_SIZE_VAL = 32
+BATCH_SIZE_TEST_WO_B = 32
 BATCH_SIZE_TEST_W_B = 4
+N_CHUNKS_TEST = 10
 
 COLUMNS = [
     DEFAULT_USER_COL,
@@ -222,15 +229,24 @@ df_test = (
 df_test_wo_b = df_test.filter(~pl.col(DEFAULT_IS_BEYOND_ACCURACY_COL))
 df_test_w_b = df_test.filter(pl.col(DEFAULT_IS_BEYOND_ACCURACY_COL))
 
-print("Init test-dataloader")
-test_dataloader_wo_b = NRMSDataLoader(
-    behaviors=df_test_wo_b,
-    article_dict=article_mapping,
-    unknown_representation="zeros",
-    history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
-    eval_mode=True,
-    batch_size=BATCH_SIZE_TEST_WO_B,
-)
+df_test_chunks = chunk_dataframe(df_test_wo_b, n_chunks=N_CHUNKS_TEST)
+pred_test_wo = []
+for i, df_test_chunk in enumerate(df_test_chunks, start=1):
+    print(f"Init test-dataloader: {i}/{N_CHUNKS_TEST}")
+    test_dataloader_wo_b = NRMSDataLoader(
+        behaviors=df_test_chunk,
+        article_dict=article_mapping,
+        unknown_representation="zeros",
+        history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
+        eval_mode=True,
+        batch_size=BATCH_SIZE_TEST_WO_B,
+    )
+    scores = model.scorer.predict(test_dataloader_wo_b)
+    pred_test_wo.append(scores)
+    clear_session()
+pred_test_wo = np.concatenate(pred_test_wo)
+
+print("Init test-dataloader: beyond-accuracy")
 test_dataloader_w_b = NRMSDataLoader(
     behaviors=df_test_w_b,
     article_dict=article_mapping,
@@ -239,11 +255,7 @@ test_dataloader_w_b = NRMSDataLoader(
     eval_mode=True,
     batch_size=BATCH_SIZE_TEST_W_B,
 )
-
-print("Predicting beyond-acuracy")
 pred_test_w = model.scorer.predict(test_dataloader_w_b)
-print("Predicting testset")
-pred_test_wo = model.scorer.predict(test_dataloader_wo_b)
 
 pred_test = np.concatenate([pred_test_wo, pred_test_w])
 df_test = add_prediction_scores(df_test, pred_test.tolist())

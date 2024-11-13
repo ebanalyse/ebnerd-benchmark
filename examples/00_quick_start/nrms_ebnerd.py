@@ -49,7 +49,7 @@ for gpu in gpus:
     tf.config.experimental.set_memory_growth(gpu, True)
 
 # conda activate ./venv/
-# python examples/00_quick_start/nrms_ebnerd.py
+# python -i examples/00_quick_start/nrms_ebnerd.py
 
 
 def ebnerd_from_path(path: Path, history_size: int = 30) -> pl.DataFrame:
@@ -88,6 +88,8 @@ SEED = np.random.randint(0, 1_000)
 MODEL_NAME = f"NRMS-{dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}-{SEED}"
 MODEL_WEIGHTS = DUMP_DIR.joinpath(f"state_dict/{MODEL_NAME}/weights")
 LOG_DIR = DUMP_DIR.joinpath(f"runs/{MODEL_NAME}")
+TEST_DF_DUMP = DUMP_DIR.joinpath("test_predictions", MODEL_NAME)
+TEST_DF_DUMP.mkdir(parents=True, exist_ok=True)
 
 print(f"Dir: {MODEL_NAME}")
 
@@ -226,13 +228,15 @@ df_test = (
         .alias(DEFAULT_LABELS_COL)
     )
 )
-df_test_wo_b = df_test.filter(~pl.col(DEFAULT_IS_BEYOND_ACCURACY_COL))
-df_test_w_b = df_test.filter(pl.col(DEFAULT_IS_BEYOND_ACCURACY_COL))
+# Split test in beyond-accuracy. BA samples have more 'article_ids_inview'.
+df_test_wo_beyond = df_test.filter(~pl.col(DEFAULT_IS_BEYOND_ACCURACY_COL))
+df_test_w_beyond = df_test.filter(pl.col(DEFAULT_IS_BEYOND_ACCURACY_COL))
 
-df_test_chunks = chunk_dataframe(df_test_wo_b, n_chunks=N_CHUNKS_TEST)
-pred_test_wo = []
+df_test_chunks = chunk_dataframe(df_test_wo_beyond, n_chunks=N_CHUNKS_TEST)
+df_pred_test_wo_beyond = []
 for i, df_test_chunk in enumerate(df_test_chunks, start=1):
-    print(f"Init test-dataloader: {i}/{N_CHUNKS_TEST}")
+    # =>
+    print(f"Init test-dataloader: {i}/{len(df_test_chunks)}")
     test_dataloader_wo_b = NRMSDataLoader(
         behaviors=df_test_chunk,
         article_dict=article_mapping,
@@ -242,36 +246,52 @@ for i, df_test_chunk in enumerate(df_test_chunks, start=1):
         batch_size=BATCH_SIZE_TEST_WO_B,
     )
     scores = model.scorer.predict(test_dataloader_wo_b)
-    pred_test_wo.append(scores)
+    # =>
+    df_test_chunk = add_prediction_scores(df_test_chunk, scores.tolist()).with_columns(
+        pl.col("scores")
+        .map_elements(lambda x: list(rank_predictions_by_score(x)))
+        .alias("ranked_scores")
+    )
+    df_pred_test_wo_beyond.append(df_test_chunk)
     clear_session()
-pred_test_wo = np.concatenate(pred_test_wo)
+# =>
+df_pred_test_wo_beyond = pl.concat(df_pred_test_wo_beyond)
+df_pred_test_wo_beyond.select(DEFAULT_IMPRESSION_ID_COL, "ranked_scores").write_parquet(
+    TEST_DF_DUMP.joinpath("wo_ba.parquet")
+)
 
 print("Init test-dataloader: beyond-accuracy")
 test_dataloader_w_b = NRMSDataLoader(
-    behaviors=df_test_w_b,
+    behaviors=df_test_w_beyond,
     article_dict=article_mapping,
     unknown_representation="zeros",
     history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
     eval_mode=True,
     batch_size=BATCH_SIZE_TEST_W_B,
 )
-pred_test_w = model.scorer.predict(test_dataloader_w_b)
+scores = model.scorer.predict(test_dataloader_w_b)
+df_pred_test_w_beyond = add_prediction_scores(
+    df_test_w_beyond, scores.tolist()
+).with_columns(
+    pl.col("scores")
+    .map_elements(lambda x: list(rank_predictions_by_score(x)))
+    .alias("ranked_scores")
+)
+df_pred_test_w_beyond.select(DEFAULT_IMPRESSION_ID_COL, "ranked_scores").write_parquet(
+    TEST_DF_DUMP.joinpath("w_ba.parquet")
+)
 
-pred_test = np.concatenate([pred_test_wo, pred_test_w])
-df_test = add_prediction_scores(df_test, pred_test.tolist())
-
+# =>
+df_test = pl.concat([df_pred_test_wo_beyond, df_pred_test_w_beyond])
+df_test.select(DEFAULT_IMPRESSION_ID_COL, "ranked_scores").write_parquet(
+    TEST_DF_DUMP.joinpath("test_final.parquet")
+)
 # metrics = MetricEvaluator(
 #     labels=df_validation["labels"].to_list(),
 #     predictions=df_validation["scores"].to_list(),
 #     metric_functions=[AucScore(), MrrScore(), NdcgScore(k=5), NdcgScore(k=10)],
 # )
 # metrics.evaluate()
-
-df_test = df_test.with_columns(
-    pl.col("scores")
-    .map_elements(lambda x: list(rank_predictions_by_score(x)))
-    .alias("ranked_scores")
-)
 
 write_submission_file(
     impression_ids=df_test[DEFAULT_IMPRESSION_ID_COL],

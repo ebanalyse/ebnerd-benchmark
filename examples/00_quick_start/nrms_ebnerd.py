@@ -86,6 +86,8 @@ DUMP_DIR.mkdir(exist_ok=True, parents=True)
 SEED = np.random.randint(0, 1_000)
 
 MODEL_NAME = f"NRMS-{dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}-{SEED}"
+# MODEL_NAME = "NRMS-382861963-2024-11-12 01:34:49.050070"
+
 MODEL_WEIGHTS = DUMP_DIR.joinpath(f"state_dict/{MODEL_NAME}/weights")
 LOG_DIR = DUMP_DIR.joinpath(f"runs/{MODEL_NAME}")
 TEST_DF_DUMP = DUMP_DIR.joinpath("test_predictions", MODEL_NAME)
@@ -104,9 +106,10 @@ hparams_nrms.history_size = HISTORY_SIZE
 
 BATCH_SIZE_TRAIN = 32
 BATCH_SIZE_VAL = 32
-BATCH_SIZE_TEST_WO_B = 32
+BATCH_SIZE_TEST_WO_B = 64
 BATCH_SIZE_TEST_W_B = 4
 N_CHUNKS_TEST = 10
+CHUNKS_DONE = 0
 
 COLUMNS = [
     DEFAULT_USER_COL,
@@ -207,9 +210,6 @@ print(f"saving model: {MODEL_WEIGHTS}")
 model.model.save_weights(MODEL_WEIGHTS)
 print(f"loading model: {MODEL_WEIGHTS}")
 model.model.load_weights(MODEL_WEIGHTS)
-# MODEL_NAME = "NRMS-382861963-2024-11-12 01:34:49.050070"
-# print(f"loaded model: {DUMP_DIR.joinpath(f'state_dict/{MODEL_NAME}/weights')}")
-# model.model.load_weights(DUMP_DIR.joinpath(f"state_dict/{MODEL_NAME}/weights"))
 
 # =>
 print("Init df_test")
@@ -234,9 +234,10 @@ df_test_w_beyond = df_test.filter(pl.col(DEFAULT_IS_BEYOND_ACCURACY_COL))
 
 df_test_chunks = chunk_dataframe(df_test_wo_beyond, n_chunks=N_CHUNKS_TEST)
 df_pred_test_wo_beyond = []
-for i, df_test_chunk in enumerate(df_test_chunks, start=1):
-    # =>
+
+for i, df_test_chunk in enumerate(df_test_chunks[CHUNKS_DONE:], start=1 + CHUNKS_DONE):
     print(f"Init test-dataloader: {i}/{len(df_test_chunks)}")
+    # Initialize DataLoader
     test_dataloader_wo_b = NRMSDataLoader(
         behaviors=df_test_chunk,
         article_dict=article_mapping,
@@ -245,19 +246,33 @@ for i, df_test_chunk in enumerate(df_test_chunks, start=1):
         eval_mode=True,
         batch_size=BATCH_SIZE_TEST_WO_B,
     )
+    # Predict and clear session
     scores = model.scorer.predict(test_dataloader_wo_b)
-    # =>
+    clear_session()
+
+    # Process the predictions
     df_test_chunk = add_prediction_scores(df_test_chunk, scores.tolist()).with_columns(
         pl.col("scores")
         .map_elements(lambda x: list(rank_predictions_by_score(x)))
         .alias("ranked_scores")
     )
+
+    # Save the processed chunk
+    df_test_chunk.select(DEFAULT_IMPRESSION_ID_COL, "ranked_scores").write_parquet(
+        TEST_DF_DUMP.joinpath(f"pred_wo_ba_{i}.parquet")
+    )
+
+    # Append and clean up
     df_pred_test_wo_beyond.append(df_test_chunk)
-    clear_session()
+
+    # Cleanup
+    del df_test_chunk, test_dataloader_wo_b, scores
+    gc.collect()
+
 # =>
 df_pred_test_wo_beyond = pl.concat(df_pred_test_wo_beyond)
 df_pred_test_wo_beyond.select(DEFAULT_IMPRESSION_ID_COL, "ranked_scores").write_parquet(
-    TEST_DF_DUMP.joinpath("wo_ba.parquet")
+    TEST_DF_DUMP.joinpath("pred_wo_ba.parquet")
 )
 
 print("Init test-dataloader: beyond-accuracy")
@@ -278,13 +293,13 @@ df_pred_test_w_beyond = add_prediction_scores(
     .alias("ranked_scores")
 )
 df_pred_test_w_beyond.select(DEFAULT_IMPRESSION_ID_COL, "ranked_scores").write_parquet(
-    TEST_DF_DUMP.joinpath("w_ba.parquet")
+    TEST_DF_DUMP.joinpath("pred_w_ba.parquet")
 )
 
 # =>
 df_test = pl.concat([df_pred_test_wo_beyond, df_pred_test_w_beyond])
 df_test.select(DEFAULT_IMPRESSION_ID_COL, "ranked_scores").write_parquet(
-    TEST_DF_DUMP.joinpath("test_final.parquet")
+    TEST_DF_DUMP.joinpath("pred_concat.parquet")
 )
 # metrics = MetricEvaluator(
 #     labels=df_validation["labels"].to_list(),

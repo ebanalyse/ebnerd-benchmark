@@ -25,7 +25,6 @@ venv/
 build
 venv
 
-ebnerd_predictions/
 # just for now:
 evaluate_predictions.py
 ebnerd_predictions/*

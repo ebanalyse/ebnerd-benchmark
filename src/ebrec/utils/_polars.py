@@ -716,3 +716,17 @@ def concat_list_str(df: pl.DataFrame, column: str) -> pl.DataFrame:
     return df.with_columns(
         pl.col(column).list.eval(pl.element().str.concat(" "))
     ).explode(column)
+
+
+def chunk_dataframe(df, n_chunks):
+    # Calculate the number of rows per chunk
+    chunk_size = df.height // n_chunks
+
+    # Split the DataFrame into chunks
+    chunks = [df[i * chunk_size : (i + 1) * chunk_size] for i in range(n_chunks)]
+
+    # Handle the remainder if there are leftover rows
+    if df.height % n_chunks != 0:
+        chunks.append(df[n_chunks * chunk_size :])
+
+    return chunks

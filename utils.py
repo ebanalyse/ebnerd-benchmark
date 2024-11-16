@@ -74,6 +74,8 @@ def down_sample_on_users(
     df: pl.DataFrame, n: int, user_col: str = "user_id", seed: int = None
 ) -> pl.DataFrame:
 
+    if n == 0:
+        return df
     groupby_name = "_index_filter"
     df = df.with_row_index(groupby_name)
 

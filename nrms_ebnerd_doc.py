@@ -49,10 +49,10 @@ MAX_TITLE_LENGTH = 30
 HISTORY_SIZE = 20
 NPRATIO = 4
 
-TRAIN_FRACTION = 1.0
+TRAIN_FRACTION = 0.2
 WITH_REPLACEMENT = True
 MIN_N_INVIEWS = 0  # 0 = all
-MAX_N_IMPR_USERS = 3  # 0 = all
+MAX_N_IMPR_USERS = 0  # 0 = all
 
 hparams_nrms_docvec.title_size = 768
 hparams_nrms_docvec.history_size = HISTORY_SIZE
@@ -64,11 +64,11 @@ hparams_nrms_docvec.attention_hidden_dim = 200
 hparams_nrms_docvec.optimizer = "adam"
 hparams_nrms_docvec.loss = "cross_entropy_loss"
 hparams_nrms_docvec.dropout = 0.2
-hparams_nrms_docvec.learning_rate = 1e-4
-hparams_nrms_docvec.newsencoder_units_per_layer = [512, 512, 512]
+hparams_nrms_docvec.learning_rate = 1e-5
+hparams_nrms_docvec.newsencoder_units_per_layer = [256, 256, 256]
 
 df_train = (
-    ebnerd_from_path(PATH.joinpath(DATASPLIT, "train"), history_size=HISTORY_SIZE)
+    ebnerd_from_path(PATH.joinpath("ebnerd_large", "train"), history_size=HISTORY_SIZE)
     .sample(fraction=TRAIN_FRACTION)
     .select(COLUMNS)
     .filter(
@@ -89,6 +89,7 @@ df_train = (
     .pipe(create_binary_labels_column)
     .sample(fraction=1.0, seed=SEED, shuffle=True)
 )
+print(f"Train-samples: {df_train.height}")
 
 # =>
 df_val = (
@@ -109,18 +110,18 @@ df_val = df_val.pipe(
 df_test = df_test.pipe(create_binary_labels_column, shuffle=False)
 
 # =>
-df_embedding = pl.read_parquet(
+df_articles = pl.read_parquet(
     PATH.joinpath(
         "artifacts/Ekstra_Bladet_contrastive_vector/contrastive_vector.parquet"
     )
 )
 
 article_mapping = create_article_id_to_value_mapping(
-    df=df_embedding, value_col="contrastive_vector"
+    df=df_articles, value_col=df_articles.columns[-1]
 )
 
 # =>
-train_dataloader = NRMSDataLoaderPretransform(
+train_dataloader = NRMSDataLoader(
     behaviors=df_train,
     article_dict=article_mapping,
     unknown_representation="zeros",
@@ -176,26 +177,26 @@ print("loading model...")
 model.model.load_weights(MODEL_WEIGHTS)
 
 # ===
-train_dataloader_test = NRMSDataLoaderPretransform(
-    behaviors=df_train,
-    article_dict=article_mapping,
-    unknown_representation="zeros",
-    history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
-    eval_mode=True,
-    batch_size=BS_TEST,
-)
-pred_test = model.scorer.predict(train_dataloader_test)
-print("Adding prediction-scores...")
-df_train_test = add_prediction_scores(df_train, pred_test.tolist())
+# train_dataloader_test = NRMSDataLoaderPretransform(
+#     behaviors=df_train,
+#     article_dict=article_mapping,
+#     unknown_representation="zeros",
+#     history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
+#     eval_mode=True,
+#     batch_size=BS_TEST,
+# )
+# pred_test = model.scorer.predict(train_dataloader_test)
+# print("Adding prediction-scores...")
+# df_train_test = add_prediction_scores(df_train, pred_test.tolist())
 
-print("Evaluating...")
-metrics = MetricEvaluator(
-    labels=df_train_test["labels"].to_list(),
-    predictions=df_train_test["scores"].to_list(),
-    metric_functions=[AucScore()],
-)
-metrics.evaluate()
-print(metrics.evaluations)
+# print("Evaluating...")
+# metrics = MetricEvaluator(
+#     labels=df_train_test["labels"].to_list(),
+#     predictions=df_train_test["scores"].to_list(),
+#     metric_functions=[AucScore()],
+# )
+# metrics.evaluate()
+# print(metrics.evaluations)
 # 0.7383
 # =>
 test_dataloader = NRMSDataLoader(
@@ -215,12 +216,7 @@ print("Evaluating...")
 metrics = MetricEvaluator(
     labels=df_test["labels"].to_list(),
     predictions=df_test["scores"].to_list(),
-    metric_functions=[
-        AucScore(),
-        # MrrScore(),
-        # NdcgScore(k=5),
-        # NdcgScore(k=10),
-    ],
+    metric_functions=[AucScore()],
 )
 metrics.evaluate()
 print(metrics.evaluations)

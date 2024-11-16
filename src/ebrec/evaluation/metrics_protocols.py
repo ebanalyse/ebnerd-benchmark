@@ -1,5 +1,6 @@
 from itertools import compress
 from typing import Iterable
+from tqdm import tqdm
 import numpy as np
 import json
 
@@ -71,7 +72,9 @@ class AucScore(Metric):
         res = np.mean(
             [
                 roc_auc_score(each_labels, each_preds)
-                for each_labels, each_preds in zip(y_true, y_pred)
+                for each_labels, each_preds in tqdm(
+                    zip(y_true, y_pred), ncols=80, total=len(y_true), desc="AUC"
+                )
             ]
         )
         return float(res)

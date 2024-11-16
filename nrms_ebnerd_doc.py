@@ -23,7 +23,8 @@ from ebrec.utils._nlp import get_transformers_word_embeddings
 from ebrec.utils._python import write_submission_file, rank_predictions_by_score
 
 from ebrec.models.newsrec.dataloader import NRMSDataLoader, NRMSDataLoaderPretransform
-from ebrec.models.newsrec.model_config import hparams_nrms
+from ebrec.models.newsrec.model_config import hparams_nrms, hparams_nrms_docvec
+from ebrec.models.newsrec.nrms_docvec import NRMSModel_docvec
 from ebrec.models.newsrec import NRMSModel
 
 
@@ -62,6 +63,7 @@ PATH = Path("~/ebnerd_data").expanduser()
 DUMP_DIR = Path("ebnerd_predictions")
 DUMP_DIR.mkdir(exist_ok=True, parents=True)
 DT_NOW = dt.datetime.now()
+SEED = 123
 
 MODEL_NAME = f"NRMS-{DT_NOW}"
 MODEL_WEIGHTS = DUMP_DIR.joinpath(f"state_dict/{MODEL_NAME}/weights")
@@ -77,6 +79,9 @@ MAX_TITLE_LENGTH = 30
 HISTORY_SIZE = 20
 NPRATIO = 4
 
+model_ = hparams_nrms_docvec()
+
+
 hparams_nrms.title_size = MAX_TITLE_LENGTH
 hparams_nrms.history_size = HISTORY_SIZE
 
@@ -86,11 +91,12 @@ hparams_nrms.attention_hidden_dim = 200
 
 hparams_nrms.optimizer = "adam"
 hparams_nrms.loss = "cross_entropy_loss"
-hparams_nrms.dropout = 0.35
-hparams_nrms.learning_rate = 1e-5
+hparams_nrms.dropout = 0.20
+hparams_nrms.learning_rate = 1e-4
 
 WITH_REPLACEMENT = True
 MIN_VALS = 0
+MAX_USERS = 3
 
 BS_TRAIN = 32
 BS_TEST = 32
@@ -119,10 +125,21 @@ df_train = (
         npratio=NPRATIO,
         shuffle=True,
         with_replacement=WITH_REPLACEMENT,
-        seed=123,
+        seed=SEED,
     )
     .pipe(create_binary_labels_column)
 )
+
+if isinstance(MAX_USERS, int):
+    # with replacement; now add to it's filled
+    df_train = df_train.with_row_index("index")
+    filter_index = (
+        df_train.sample(fraction=1.0, shuffle=True, seed=SEED)
+        .group_by(pl.col(DEFAULT_USER_COL))
+        .agg("index")
+        .with_columns(pl.col("index").list.tail(MAX_USERS).alias("filter_index"))
+    )["filter_index"].explode()
+    df_train = df_train.filter(pl.col("index").is_in(filter_index))
 
 # =>
 df_val = ebnerd_from_path(
@@ -164,6 +181,7 @@ transformer_model = AutoModel.from_pretrained(TRANSFORMER_MODEL_NAME)
 transformer_tokenizer = AutoTokenizer.from_pretrained(TRANSFORMER_MODEL_NAME)
 
 word2vec_embedding = get_transformers_word_embeddings(transformer_model)
+
 #
 if not article_path.exists():
     df_articles, cat_cal = concat_str_columns(df_articles, columns=TEXT_COLUMNS_TO_USE)
@@ -175,13 +193,22 @@ else:
     df_articles = pl.read_parquet(article_path)
     token_col_title = df_articles.columns[-1]
 
-# =>
-article_mapping = create_article_id_to_value_mapping(
-    df=df_articles, value_col=token_col_title
+df_vector = pl.read_parquet(
+    PATH.joinpath(
+        "artifacts/Ekstra_Bladet_contrastive_vector/contrastive_vector.parquet"
+    )
 )
 
 # =>
-train_dataloader = NRMSDataLoaderPretransform(
+# article_mapping = create_article_id_to_value_mapping(
+#     df=df_articles, value_col=token_col_title
+# )
+article_mapping = create_article_id_to_value_mapping(
+    df=df_vector, value_col="contrastive_vector"
+)
+
+# =>
+train_dataloader = NRMSDataLoader(
     behaviors=df_train,
     article_dict=article_mapping,
     unknown_representation="zeros",
@@ -199,13 +226,13 @@ val_dataloader = NRMSDataLoaderPretransform(
     batch_size=BS_TEST,
 )
 
-test_dataloader = NRMSDataLoaderPretransform(
+test_dataloader = NRMSDataLoader(
     behaviors=df_test,
     article_dict=article_mapping,
     unknown_representation="zeros",
     history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
     eval_mode=True,
-    batch_size=BS_TEST,
+    batch_size=4,
 )
 
 train_dataloader_test = NRMSDataLoaderPretransform(
@@ -235,9 +262,9 @@ lr_scheduler = tf.keras.callbacks.ReduceLROnPlateau(
 )
 callbacks = [lr_scheduler, early_stopping, modelcheckpoint, tensorboard_callback]
 
-model = NRMSModel(
-    hparams=hparams_nrms,
-    word2vec_embedding=word2vec_embedding,
+model = NRMSModel_docvec(
+    hparams=hparams_nrms_docvec,
+    # word2vec_embedding=word2vec_embedding,
     seed=42,
 )
 model.model.compile(
@@ -292,3 +319,4 @@ metrics = MetricEvaluator(
 )
 metrics.evaluate()
 print(metrics.evaluations)
+# 0.5955744087274194

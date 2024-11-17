@@ -116,7 +116,13 @@ class NRMSModel_docvec:
         x = sequences_input_title
         # Create configurable Dense layers:
         for layer in units_per_layer:
-            x = tf.keras.layers.Dense(units=layer, activation="relu")(x)
+            x = tf.keras.layers.Dense(
+                units=layer,
+                activation="relu",
+                kernel_regularizer=tf.keras.regularizers.l2(
+                    self.hparams.newsencoder_l2_regularization
+                ),
+            )(x)
             x = tf.keras.layers.BatchNormalization()(x)
             x = tf.keras.layers.Dropout(self.hparams.dropout)(x)
 

@@ -23,13 +23,19 @@ from ebrec.utils._nlp import get_transformers_word_embeddings
 from ebrec.utils._python import write_submission_file, rank_predictions_by_score
 
 from ebrec.models.newsrec.dataloader import NRMSDataLoader, NRMSDataLoaderPretransform
-from ebrec.models.newsrec.model_config import hparams_nrms, hparams_nrms_docvec
+from ebrec.models.newsrec.model_config import (
+    hparams_nrms,
+    hparams_nrms_docvec,
+    print_hparams,
+)
 from ebrec.models.newsrec.nrms_docvec import NRMSModel_docvec
 from ebrec.models.newsrec import NRMSModel
 
 from utils import ebnerd_from_path, PATH, COLUMNS, DUMP_DIR, down_sample_on_users
 
 # conda activate ./venv/; python nrms_ebnerd_doc.py
+# conda activate ./venv/; tensorboard --logdir=ebnerd_predictions/runs
+
 model_func = NRMSModel_docvec
 DT_NOW = dt.datetime.now()
 SEED = 123
@@ -43,7 +49,7 @@ BS_TRAIN = 32
 BS_TEST = 32
 
 TEST_SAMPLES = 100_000
-EPOCHS = 5
+EPOCHS = 10
 
 MAX_TITLE_LENGTH = 30
 HISTORY_SIZE = 20
@@ -57,14 +63,15 @@ MAX_N_IMPR_USERS = 0  # 0 = all
 hparams_nrms_docvec.title_size = 768
 hparams_nrms_docvec.history_size = HISTORY_SIZE
 # MODEL ARCHITECTURE
-hparams_nrms_docvec.head_num = 20
-hparams_nrms_docvec.head_dim = 20
+hparams_nrms_docvec.head_num = 16
+hparams_nrms_docvec.head_dim = 16
 hparams_nrms_docvec.attention_hidden_dim = 200
 # MODEL OPTIMIZER:
 hparams_nrms_docvec.optimizer = "adam"
 hparams_nrms_docvec.loss = "cross_entropy_loss"
 hparams_nrms_docvec.dropout = 0.2
-hparams_nrms_docvec.learning_rate = 1e-5
+hparams_nrms_docvec.learning_rate = 1e-4
+hparams_nrms_docvec.newsencoder_l2_regularization = 1e-4
 hparams_nrms_docvec.newsencoder_units_per_layer = [256, 256, 256]
 
 df_train = (
@@ -121,7 +128,7 @@ article_mapping = create_article_id_to_value_mapping(
 )
 
 # =>
-train_dataloader = NRMSDataLoader(
+train_dataloader = NRMSDataLoaderPretransform(
     behaviors=df_train,
     article_dict=article_mapping,
     unknown_representation="zeros",
@@ -142,7 +149,7 @@ val_dataloader = NRMSDataLoaderPretransform(
 # CALLBACKS
 tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=LOG_DIR, histogram_freq=1)
 early_stopping = tf.keras.callbacks.EarlyStopping(
-    monitor="val_auc", mode="max", patience=20, restore_best_weights=True
+    monitor="val_auc", mode="max", patience=4, restore_best_weights=True
 )
 modelcheckpoint = tf.keras.callbacks.ModelCheckpoint(
     filepath=MODEL_WEIGHTS,
@@ -153,7 +160,7 @@ modelcheckpoint = tf.keras.callbacks.ModelCheckpoint(
     verbose=1,
 )
 lr_scheduler = tf.keras.callbacks.ReduceLROnPlateau(
-    monitor="val_loss", mode="min", factor=0.5, patience=2, min_lr=1e-6
+    monitor="val_auc", mode="max", factor=0.2, patience=2, min_lr=1e-6
 )
 callbacks = [lr_scheduler, early_stopping, modelcheckpoint, tensorboard_callback]
 
@@ -170,7 +177,7 @@ model.model.compile(
 hist = model.model.fit(
     train_dataloader,
     validation_data=val_dataloader,
-    epochs=5,
+    epochs=EPOCHS,
     callbacks=callbacks,
 )
 print("loading model...")
@@ -219,6 +226,5 @@ metrics = MetricEvaluator(
     metric_functions=[AucScore()],
 )
 metrics.evaluate()
+print_hparams(hparams_nrms_docvec)
 print(metrics.evaluations)
-# 0.5955744087274194
-# 0.5997425230467032

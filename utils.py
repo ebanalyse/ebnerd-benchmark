@@ -43,7 +43,9 @@ COLUMNS = [
 ]
 
 
-def ebnerd_from_path(path: Path, history_size: int = 30) -> pl.DataFrame:
+def ebnerd_from_path(
+    path: Path, history_size: int = 30, padding: int = 0
+) -> pl.DataFrame:
     """
     Load ebnerd - function
     """

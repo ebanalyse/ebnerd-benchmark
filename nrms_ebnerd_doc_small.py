@@ -75,7 +75,7 @@ hparams_nrms_docvec.newsencoder_l2_regularization = 1e-4
 hparams_nrms_docvec.newsencoder_units_per_layer = [256, 256, 256]
 
 df_train = (
-    ebnerd_from_path(PATH.joinpath("ebnerd_large", "train"), history_size=HISTORY_SIZE)
+    ebnerd_from_path(PATH.joinpath(DATASPLIT, "train"), history_size=HISTORY_SIZE)
     .sample(fraction=TRAIN_FRACTION)
     .select(COLUMNS)
     .filter(

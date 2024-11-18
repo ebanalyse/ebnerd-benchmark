@@ -57,9 +57,8 @@ BATCH_SIZE_TEST_W_B = 4
 N_CHUNKS_TEST = 10
 CHUNKS_DONE = 0
 
-EPOCHS = 1
-
-MAX_TITLE_LENGTH = 30
+# MAX_TITLE_LENGTH = 30
+EPOCHS = 5
 HISTORY_SIZE = 20
 NPRATIO = 4
 
@@ -175,8 +174,8 @@ hist = model.model.fit(
     epochs=EPOCHS,
     callbacks=callbacks,
 )
-print(f"saving model: {MODEL_WEIGHTS}")
-model.model.save_weights(MODEL_WEIGHTS)
+# print(f"saving model: {MODEL_WEIGHTS}")
+# model.model.save_weights(MODEL_WEIGHTS)
 print(f"loading model: {MODEL_WEIGHTS}")
 model.model.load_weights(MODEL_WEIGHTS)
 
@@ -277,6 +276,3 @@ write_submission_file(
     path=DUMP_DIR.joinpath("predictions.txt"),
     filename_zip=f"{DATASPLIT}_predictions-{MODEL_NAME}.zip",
 )
-
-
-# ==

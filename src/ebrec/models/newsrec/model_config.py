@@ -7,6 +7,12 @@ UNKNOWN_BODY_VALUE = [0] * DEFAULT_BODY_SIZE
 DEFAULT_DOCUMENT_SIZE = 768
 
 
+def print_hparams(hparams_class):
+    for attr, value in hparams_class.__annotations__.items():
+        # Print attribute names and values
+        print(f"{attr}: {getattr(hparams_class, attr)}")
+
+
 class hparams_naml:
     # INPUT DIMENTIONS:
     title_size: int = DEFAULT_TITLE_SIZE
@@ -95,3 +101,4 @@ class hparams_nrms_docvec:
     dropout: float = 0.2
     learning_rate: float = 0.0001
     newsencoder_units_per_layer: list[int] = [512, 512, 512]
+    newsencoder_l2_regularization: float = 1e-4

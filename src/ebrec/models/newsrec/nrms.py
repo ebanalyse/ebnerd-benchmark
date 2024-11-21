@@ -4,6 +4,10 @@ from ebrec.models.newsrec.layers import AttLayer2, SelfAttention
 import tensorflow as tf
 import numpy as np
 
+from tensorflow.keras.layers import Embedding, Input, Dropout, Dense, BatchNormalization
+from tensorflow.keras.initializers import GlorotUniform
+from tensorflow.keras.regularizers import l2
+
 
 class NRMSModel:
     """NRMS model(Neural News Recommendation with Multi-Head Self-Attention)
@@ -34,7 +38,10 @@ class NRMSModel:
 
         # INIT THE WORD-EMBEDDINGS:
         if word2vec_embedding is None:
-            self.word2vec_embedding = np.random.rand(vocab_size, word_emb_dim)
+            # Xavier Initialization
+            initializer = GlorotUniform(seed=self.seed)
+            self.word2vec_embedding = initializer(shape=(vocab_size, word_emb_dim))
+            # self.word2vec_embedding = np.random.rand(vocab_size, word_emb_dim)
         else:
             self.word2vec_embedding = word2vec_embedding
 
@@ -130,6 +137,13 @@ class NRMSModel:
         y = SelfAttention(self.hparams.head_num, self.hparams.head_dim, seed=self.seed)(
             [y, y, y]
         )
+
+        # Create configurable Dense layers:
+        for layer in [400, 400, 400]:
+            y = tf.keras.layers.Dense(units=layer, activation="relu")(y)
+            y = tf.keras.layers.BatchNormalization()(y)
+            y = tf.keras.layers.Dropout(self.hparams.dropout)(y)
+
         y = tf.keras.layers.Dropout(self.hparams.dropout)(y)
         pred_title = AttLayer2(self.hparams.attention_hidden_dim, seed=self.seed)(y)
 

@@ -164,7 +164,7 @@ model = model_func(
 )
 model.model.compile(
     optimizer=model.model.optimizer,
-    loss="categorical_crossentropy",
+    loss=model.model.loss,
     metrics=["AUC"],
 )
 # =>

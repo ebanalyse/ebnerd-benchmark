@@ -42,32 +42,29 @@ from ebrec.models.newsrec import NRMSModel
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 PATH = Path("~/ebnerd_data").expanduser()
-DEBUG = True
 SEED = 123
-
-# =====================================================================================
-#  ############################# UNIQUE FOR NRMSDocVec ###############################
-# =====================================================================================
-# Model in use:
-model_func = NRMSDocVec
-hparams = hparams_nrms_docvec
-
 DATASPLIT = "ebnerd_small"
 BS_TRAIN = 32
 BS_TEST = 32
 BATCH_SIZE_TEST_WO_B = 32
 BATCH_SIZE_TEST_W_B = 4
-
+HISTORY_SIZE = 20
+NPRATIO = 4
+EPOCHS = 5
+DEBUG = True
+TRAIN_FRACTION = 1.0 if not DEBUG else 0.0001
+FRACTION_TEST = 1.0 if not DEBUG else 0.0001
 # - NRMSDataLoaderPretransform: speed efficient.
 # - NRMSDataLoader: memory efficient.
 NRMSLoader_training = NRMSDataLoaderPretransform  # NRMSDataLoader
 
-HISTORY_SIZE = 20
-NPRATIO = 4
+# =====================================================================================
+#  ############################# UNIQUE FOR NRMSModel ################################
+# =====================================================================================
 
-EPOCHS = 5
-TRAIN_FRACTION = 1.0 if not DEBUG else 0.0001
-FRACTION_TEST = 1.0 if not DEBUG else 0.0001
+# Model in use:
+model_func = NRMSDocVec
+hparams = hparams_nrms_docvec
 
 ## NRMSDocVec:
 hparams.title_size = 768
@@ -99,6 +96,7 @@ article_mapping = create_article_id_to_value_mapping(
 # =====================================================================================
 #  ############################# UNIQUE FOR NRMSDocVec ###############################
 # =====================================================================================
+
 
 # Dump paths:
 DUMP_DIR = Path("ebnerd_predictions")

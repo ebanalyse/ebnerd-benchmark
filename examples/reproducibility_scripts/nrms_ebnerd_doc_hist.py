@@ -63,47 +63,39 @@ NRMSLoader_training = NRMSDataLoaderPretransform  # NRMSDataLoader
 # =====================================================================================
 
 # Model in use:
-model_func = NRMSModel
-hparams = hparams_nrms
+model_func = NRMSDocVec
+hparams = hparams_nrms_docvec
 
-## NRMSModel:
-TEXT_COLUMNS_TO_USE = [DEFAULT_TITLE_COL, DEFAULT_SUBTITLE_COL, DEFAULT_BODY_COL]
-TRANSFORMER_MODEL_NAME = "Maltehb/danish-bert-botxo"
-MAX_TITLE_LENGTH = 30
-hparams.title_size = MAX_TITLE_LENGTH
+## NRMSDocVec:
+hparams.title_size = 768
 hparams.history_size = HISTORY_SIZE
-hparams.head_num = 20
-hparams.head_dim = 20
+# MODEL ARCHITECTURE
+hparams.head_num = 16
+hparams.head_dim = 16
 hparams.attention_hidden_dim = 200
+hparams.newsencoder_units_per_layer = [512, 512, 512]
+# MODEL OPTIMIZER:
 hparams.optimizer = "adam"
 hparams.loss = "cross_entropy_loss"
-hparams.dropout = 0.20
+hparams.dropout = 0.2
 hparams.learning_rate = 1e-4
-
+hparams.newsencoder_l2_regularization = 1e-4
 print_hparams(hparams)
 
 # =============
-print("Initiating articles...")
-df_articles = pl.read_parquet(PATH.joinpath("articles.parquet"))
-
-# LOAD HUGGINGFACE:
-transformer_model = AutoModel.from_pretrained(TRANSFORMER_MODEL_NAME)
-transformer_tokenizer = AutoTokenizer.from_pretrained(TRANSFORMER_MODEL_NAME)
-
-word2vec_embedding = get_transformers_word_embeddings(transformer_model)
-#
-df_articles, cat_cal = concat_str_columns(df_articles, columns=TEXT_COLUMNS_TO_USE)
-df_articles, token_col_title = convert_text2encoding_with_transformers(
-    df_articles, transformer_tokenizer, cat_cal, max_length=MAX_TITLE_LENGTH
+# Data-path
+DOC_VEC_PATH = PATH.joinpath(
+    "artifacts/Ekstra_Bladet_contrastive_vector/contrastive_vector.parquet"
 )
+print("Initiating articles...")
+df_articles = pl.read_parquet(DOC_VEC_PATH)
 article_mapping = create_article_id_to_value_mapping(
-    df=df_articles, value_col=token_col_title
+    df=df_articles, value_col=df_articles.columns[-1]
 )
 
 # =====================================================================================
 #  ############################# UNIQUE FOR NRMSDocVec ###############################
 # =====================================================================================
-
 
 # Dump paths:
 DUMP_DIR = Path("ebnerd_predictions")
@@ -114,7 +106,7 @@ DT_NOW = dt.datetime.now()
 MODEL_NAME = model_func.__name__
 MODEL_OUTPUT_NAME = f"{MODEL_NAME}-{DT_NOW}"
 #
-ARTIFACT_DIR = DUMP_DIR.joinpath("test_predictions", MODEL_OUTPUT_NAME)
+ARTIFACT_DIR = DUMP_DIR.joinpath("test_predictions", MODEL_NAME)
 # Model monitoring:
 MODEL_WEIGHTS = DUMP_DIR.joinpath(f"state_dict/{MODEL_OUTPUT_NAME}/weights")
 LOG_DIR = DUMP_DIR.joinpath(f"runs/{MODEL_OUTPUT_NAME}")
@@ -138,38 +130,44 @@ write_json_file(
     ARTIFACT_DIR.joinpath(f"{MODEL_NAME}_hparams.json"),
 )
 # =====================================================================================
-# We'll use the training + validation sets for training.
+
 df = (
-    pl.concat(
-        [
-            ebnerd_from_path(
-                PATH.joinpath(DATASPLIT, "train"),
-                history_size=HISTORY_SIZE,
-                padding=0,
-            ),
-            ebnerd_from_path(
-                PATH.joinpath(DATASPLIT, "validation"),
-                history_size=HISTORY_SIZE,
-                padding=0,
-            ),
-        ]
-    )
+    ebnerd_from_path(PATH.joinpath(DATASPLIT, "train"), history_size=HISTORY_SIZE)
     .sample(fraction=TRAIN_FRACTION, shuffle=True, seed=SEED)
     .select(COLUMNS)
     .pipe(
         sampling_strategy_wu2019,
-        npratio=NPRATIO,
+        npratio=4,
         shuffle=True,
         with_replacement=True,
         seed=SEED,
     )
     .pipe(create_binary_labels_column)
 )
-
-# We keep the last day of our training data as the validation set.
+#
 last_dt = df[DEFAULT_IMPRESSION_TIMESTAMP_COL].dt.date().max() - dt.timedelta(days=1)
 df_train = df.filter(pl.col(DEFAULT_IMPRESSION_TIMESTAMP_COL).dt.date() < last_dt)
 df_validation = df.filter(pl.col(DEFAULT_IMPRESSION_TIMESTAMP_COL).dt.date() >= last_dt)
+
+
+# =====================================================================================
+train_dataloader = NRMSDataLoaderPretransform(
+    behaviors=df_train,
+    article_dict=article_mapping,
+    unknown_representation="zeros",
+    history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
+    eval_mode=False,
+    batch_size=BS_TRAIN,
+)
+
+val_dataloader = NRMSDataLoaderPretransform(
+    behaviors=df_validation,
+    article_dict=article_mapping,
+    unknown_representation="zeros",
+    history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
+    eval_mode=False,
+    batch_size=BS_TEST,
+)
 
 # =====================================================================================
 print(f"Initiating training-dataloader")
@@ -243,106 +241,79 @@ print(f"loading model: {MODEL_WEIGHTS}")
 model.model.load_weights(MODEL_WEIGHTS)
 
 # =====================================================================================
-print("Initiating testset...")
-df_test = (
+
+# First filter: only keep users with >FILTER_MIN_HISTORY in history-size
+FILTER_MIN_HISTORY = 100
+# Truncate the history
+HIST_SIZE = 100
+
+# =>
+df = (
     ebnerd_from_path(
-        PATH.joinpath("ebnerd_testset", "test"),
-        history_size=HISTORY_SIZE,
-        padding=0,
+        PATH.joinpath(DATASPLIT, "validation"), history_size=120, padding=None
     )
     .sample(fraction=FRACTION_TEST)
-    .with_columns(
-        pl.col(DEFAULT_INVIEW_ARTICLES_COL)
-        .list.first()
-        .alias(DEFAULT_CLICKED_ARTICLES_COL)
-    )
-    .select(COLUMNS + [DEFAULT_IS_BEYOND_ACCURACY_COL])
-    .with_columns(
-        pl.col(DEFAULT_INVIEW_ARTICLES_COL)
-        .list.eval(pl.element() * 0)
-        .alias(DEFAULT_LABELS_COL)
-    )
+    .filter(pl.col(DEFAULT_HISTORY_ARTICLE_ID_COL).list.len() >= FILTER_MIN_HISTORY)
+    .select(COLUMNS)
+    .pipe(create_binary_labels_column)
 )
-# Split test in beyond-accuracy TRUE / FALSE. In the BA 'article_ids_inview' is 250.
-df_test_wo_beyond = df_test.filter(~pl.col(DEFAULT_IS_BEYOND_ACCURACY_COL))
-df_test_w_beyond = df_test.filter(pl.col(DEFAULT_IS_BEYOND_ACCURACY_COL))
 
-df_test_chunks = split_df_chunks(df_test_wo_beyond, n_chunks=N_CHUNKS_TEST)
-df_pred_test_wo_beyond = []
-print("Initiating testset without beyond-accuracy...")
-for i, df_test_chunk in enumerate(df_test_chunks[CHUNKS_DONE:], start=1 + CHUNKS_DONE):
-    print(f"Test chunk: {i}/{len(df_test_chunks)}")
-    # Initialize DataLoader
-    test_dataloader_wo_b = NRMSDataLoader(
-        behaviors=df_test_chunk,
+pairs = [
+    (1, 256),
+    (2, 256),
+    (3, 256),
+    (4, 256),
+    (5, 256),
+    (10, 256),
+    (20, 128),
+    (30, 64),
+    (40, 64),
+    (50, 64),
+]
+
+aucs = []
+hists = []
+for hist_size, batch_size in pairs:
+    print(f"History size: {hist_size}, Batch size: {batch_size}")
+
+    df_ = df.pipe(
+        truncate_history,
+        column=DEFAULT_HISTORY_ARTICLE_ID_COL,
+        history_size=hist_size,
+        padding_value=0,
+        enable_warning=False,
+    )
+
+    test_dataloader = NRMSDataLoader(
+        behaviors=df_,
         article_dict=article_mapping,
         unknown_representation="zeros",
         history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
         eval_mode=True,
-        batch_size=BATCH_SIZE_TEST_WO_B,
-    )
-    # Predict and clear session
-    scores = model.scorer.predict(test_dataloader_wo_b)
-    tf.keras.backend.clear_session()
-
-    # Process the predictions
-    df_test_chunk = add_prediction_scores(df_test_chunk, scores.tolist()).with_columns(
-        pl.col("scores")
-        .map_elements(lambda x: list(rank_predictions_by_score(x)))
-        .alias("ranked_scores")
+        batch_size=batch_size,
     )
 
-    # Save the processed chunk
-    df_test_chunk.select(DEFAULT_IMPRESSION_ID_COL, "ranked_scores").write_parquet(
-        TEST_CHUNKS_DIR.joinpath(f"pred_wo_ba_{i}.parquet")
+    scores = model.scorer.predict(test_dataloader)
+
+    df_pred = add_prediction_scores(df_, scores.tolist())
+
+    metrics = MetricEvaluator(
+        labels=df_pred["labels"],
+        predictions=df_pred["scores"],
+        metric_functions=[AucScore()],
     )
+    metrics.evaluate()
+    auc = metrics.evaluations["auc"]
+    aucs.append(round(auc, 4))
+    hists.append(hist_size)
+    print(f"{auc} (History size: {hist_size}, Batch size: {batch_size})")
 
-    # Append and clean up
-    df_pred_test_wo_beyond.append(df_test_chunk)
+for h, a in zip(hists, aucs):
+    print(f"({a}, {h}),")
 
-    # Cleanup
-    del df_test_chunk, test_dataloader_wo_b, scores
-    gc.collect()
+results = {h: a for h, a in zip(hists, aucs)}
+write_json_file(results, ARTIFACT_DIR.joinpath("auc_history_length.json"))
 
-df_pred_test_wo_beyond = pl.concat(df_pred_test_wo_beyond)
-df_pred_test_wo_beyond.select(DEFAULT_IMPRESSION_ID_COL, "ranked_scores").write_parquet(
-    TEST_CHUNKS_DIR.joinpath("pred_wo_ba.parquet")
-)
-# =====================================================================================
-print("Initiating testset with beyond-accuracy...")
-test_dataloader_w_b = NRMSDataLoader(
-    behaviors=df_test_w_beyond,
-    article_dict=article_mapping,
-    unknown_representation="zeros",
-    history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
-    eval_mode=True,
-    batch_size=BATCH_SIZE_TEST_W_B,
-)
-scores = model.scorer.predict(test_dataloader_w_b)
-df_pred_test_w_beyond = add_prediction_scores(
-    df_test_w_beyond, scores.tolist()
-).with_columns(
-    pl.col("scores")
-    .map_elements(lambda x: list(rank_predictions_by_score(x)))
-    .alias("ranked_scores")
-)
-df_pred_test_w_beyond.select(DEFAULT_IMPRESSION_ID_COL, "ranked_scores").write_parquet(
-    TEST_CHUNKS_DIR.joinpath("pred_w_ba.parquet")
-)
-
-# =====================================================================================
-print("Saving prediction results...")
-df_test = pl.concat([df_pred_test_wo_beyond, df_pred_test_w_beyond])
-df_test.select(DEFAULT_IMPRESSION_ID_COL, "ranked_scores").write_parquet(
-    ARTIFACT_DIR.joinpath("test_predictions.parquet")
-)
-
+# Clean up
 if TEST_CHUNKS_DIR.exists() and TEST_CHUNKS_DIR.is_dir():
     shutil.rmtree(TEST_CHUNKS_DIR)
-
-write_submission_file(
-    impression_ids=df_test[DEFAULT_IMPRESSION_ID_COL],
-    prediction_scores=df_test["ranked_scores"],
-    path=ARTIFACT_DIR.joinpath("predictions.txt"),
-    filename_zip=f"{MODEL_NAME}-{SEED}-{DATASPLIT}.zip",
-)

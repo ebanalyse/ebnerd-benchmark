@@ -36,7 +36,7 @@ from ebrec.models.newsrec import NRMSModel
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-DEBUG = True
+DEBUG = False
 SEED = 123
 
 # =====================================================================================

@@ -36,11 +36,47 @@ from ebrec.models.newsrec import NRMSModel
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
+DEBUG = True
+SEED = 123
+
 # =====================================================================================
 # Model in use:
 model_func = NRMSDocVec
 hparams = hparams_nrms_docvec
 
+DATASPLIT = "ebnerd_small"
+BS_TRAIN = 32
+BS_TEST = 32
+BATCH_SIZE_TEST_WO_B = 32
+BATCH_SIZE_TEST_W_B = 4
+
+# - NRMSDataLoaderPretransform: speed efficient.
+# - NRMSDataLoader: memory efficient.
+NRMSLoader_training = NRMSDataLoaderPretransform  # NRMSDataLoader
+
+HISTORY_SIZE = 20
+NPRATIO = 4
+
+EPOCHS = 5
+TRAIN_FRACTION = 1.0 if not DEBUG else 0.0001
+FRACTION_TEST = 1.0 if not DEBUG else 0.0001
+
+hparams.title_size = 768
+hparams.history_size = HISTORY_SIZE
+# MODEL ARCHITECTURE
+hparams.head_num = 16
+hparams.head_dim = 16
+hparams.attention_hidden_dim = 200
+hparams.newsencoder_units_per_layer = [512, 512, 512]
+# MODEL OPTIMIZER:
+hparams.optimizer = "adam"
+hparams.loss = "cross_entropy_loss"
+hparams.dropout = 0.2
+hparams.learning_rate = 1e-4
+hparams.newsencoder_l2_regularization = 1e-4
+print_hparams(hparams)
+
+# =====================================================================================
 # Data-path
 PATH = Path("~/ebnerd_data").expanduser()
 DOC_VEC_PATH = PATH.joinpath(
@@ -51,7 +87,6 @@ DUMP_DIR = Path("ebnerd_predictions")
 DUMP_DIR.mkdir(exist_ok=True, parents=True)
 #
 DT_NOW = dt.datetime.now()
-SEED = 123
 #
 MODEL_NAME = model_func.__name__
 ARTIFACT_DIR = f"{MODEL_NAME}-{DT_NOW}"
@@ -74,45 +109,11 @@ COLUMNS = [
     DEFAULT_IMPRESSION_ID_COL,
     DEFAULT_USER_COL,
 ]
-# =====================================================================================
-
-DATASPLIT = "ebnerd_small"
-BS_TRAIN = 32
-BS_TEST = 32
-BATCH_SIZE_TEST_WO_B = 32
-BATCH_SIZE_TEST_W_B = 4
-
-# - NRMSDataLoaderPretransform: speed efficient.
-# - NRMSDataLoader: memory efficient.
-NRMSLoader_training = NRMSDataLoaderPretransform  # NRMSDataLoader
-
-HISTORY_SIZE = 20
-NPRATIO = 4
-
-EPOCHS = 5
-TRAIN_FRACTION = 1.0
-FRACTION_TEST = 1.0
-
-hparams.title_size = 768
-hparams.history_size = HISTORY_SIZE
-# MODEL ARCHITECTURE
-hparams.head_num = 16
-hparams.head_dim = 16
-hparams.attention_hidden_dim = 200
-hparams.newsencoder_units_per_layer = [512, 512, 512]
-# MODEL OPTIMIZER:
-hparams.optimizer = "adam"
-hparams.loss = "cross_entropy_loss"
-hparams.dropout = 0.2
-hparams.learning_rate = 1e-4
-hparams.newsencoder_l2_regularization = 1e-4
 # Store hparams
-print_hparams(hparams)
 write_json_file(
     hparams_to_dict(hparams),
     PREDICTION_DIR.joinpath(f"{MODEL_NAME}_hparams.json"),
 )
-
 # =====================================================================================
 # We'll use the training + validation sets for training.
 df = (
@@ -327,5 +328,5 @@ write_submission_file(
     impression_ids=df_test[DEFAULT_IMPRESSION_ID_COL],
     prediction_scores=df_test["ranked_scores"],
     path=PREDICTION_DIR.joinpath("predictions.txt"),
-    filename_zip=f"{MODEL_NAME}-{SEED}-{DATASPLIT}-{DT_NOW}.zip",
+    filename_zip=f"{MODEL_NAME}-{SEED}-{DATASPLIT}.zip",
 )

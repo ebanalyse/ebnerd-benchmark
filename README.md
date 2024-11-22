@@ -70,6 +70,17 @@ Activate your enviroment:
 conda activate <environment_name>
 ```
 
+### [NRMSModel](https://github.com/ebanalyse/ebnerd-benchmark/blob/main/src/ebrec/models/newsrec/nrms.py) 
+
+```
+python examples/reproducibility_scripts/ebnerd_nrms.py
+```
+
+Tensorboards:
+```
+tensorboard --logdir=ebnerd_predictions/runs
+```
+
 ### [NRMSDocVec](https://github.com/ebanalyse/ebnerd-benchmark/blob/main/src/ebrec/models/newsrec/nrms_docvec.py) 
 
 ```

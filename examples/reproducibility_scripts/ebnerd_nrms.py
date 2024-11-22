@@ -45,11 +45,11 @@ DEBUG = True
 SEED = 123
 
 # =====================================================================================
-#  ############################# UNIQUE FOR NRMSDocVec ###############################
+#  ############################# UNIQUE FOR NRMSModel ################################
 # =====================================================================================
 # Model in use:
-model_func = NRMSDocVec
-hparams = hparams_nrms_docvec
+model_func = NRMSModel
+hparams = hparams_nrms
 
 DATASPLIT = "ebnerd_small"
 BS_TRAIN = 32
@@ -68,35 +68,45 @@ EPOCHS = 5
 TRAIN_FRACTION = 1.0 if not DEBUG else 0.0001
 FRACTION_TEST = 1.0 if not DEBUG else 0.0001
 
-## NRMSDocVec:
-hparams.title_size = 768
-hparams.history_size = HISTORY_SIZE
-# MODEL ARCHITECTURE
-hparams.head_num = 16
-hparams.head_dim = 16
-hparams.attention_hidden_dim = 200
-hparams.newsencoder_units_per_layer = [512, 512, 512]
-# MODEL OPTIMIZER:
-hparams.optimizer = "adam"
-hparams.loss = "cross_entropy_loss"
-hparams.dropout = 0.2
-hparams.learning_rate = 1e-4
-hparams.newsencoder_l2_regularization = 1e-4
+## NRMSModel:
+TEXT_COLUMNS_TO_USE = [DEFAULT_TITLE_COL, DEFAULT_SUBTITLE_COL, DEFAULT_BODY_COL]
+TRANSFORMER_MODEL_NAME = "Maltehb/danish-bert-botxo"
+MAX_TITLE_LENGTH = 30
+hparams_nrms.title_size = MAX_TITLE_LENGTH
+hparams_nrms.history_size = HISTORY_SIZE
+
+hparams_nrms.head_num = 20
+hparams_nrms.head_dim = 20
+hparams_nrms.attention_hidden_dim = 200
+
+hparams_nrms.optimizer = "adam"
+hparams_nrms.loss = "cross_entropy_loss"
+hparams_nrms.dropout = 0.20
+hparams_nrms.learning_rate = 1e-4
+
 print_hparams(hparams)
 
 # =============
-# Data-path
-DOC_VEC_PATH = PATH.joinpath(
-    "artifacts/Ekstra_Bladet_contrastive_vector/contrastive_vector.parquet"
-)
 print("Initiating articles...")
-df_articles = pl.read_parquet(DOC_VEC_PATH)
+df_articles = pl.read_parquet(PATH.joinpath("articles.parquet"))
+
+# LOAD HUGGINGFACE:
+transformer_model = AutoModel.from_pretrained(TRANSFORMER_MODEL_NAME)
+transformer_tokenizer = AutoTokenizer.from_pretrained(TRANSFORMER_MODEL_NAME)
+
+word2vec_embedding = get_transformers_word_embeddings(transformer_model)
+#
+df_articles, cat_cal = concat_str_columns(df_articles, columns=TEXT_COLUMNS_TO_USE)
+df_articles, token_col_title = convert_text2encoding_with_transformers(
+    df_articles, transformer_tokenizer, cat_cal, max_length=MAX_TITLE_LENGTH
+)
+
 article_mapping = create_article_id_to_value_mapping(
-    df=df_articles, value_col=df_articles.columns[-1]
+    df=df_articles, value_col=token_col_title
 )
 
 # =====================================================================================
-#  ############################# UNIQUE FOR NRMSDocVec ###############################
+#  ############################# UNIQUE FOR NRMSModel ################################
 # =====================================================================================
 
 # Dump paths:

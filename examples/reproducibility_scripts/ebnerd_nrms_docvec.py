@@ -16,19 +16,31 @@ from ebrec.utils._behaviors import (
 )
 from ebrec.evaluation import MetricEvaluator, AucScore, NdcgScore, MrrScore
 
-from ebrec.utils._python import write_submission_file, rank_predictions_by_score
+from ebrec.utils._python import (
+    write_submission_file,
+    rank_predictions_by_score,
+    write_json_file,
+)
 from ebrec.utils._articles import create_article_id_to_value_mapping
 from ebrec.utils._polars import split_df_chunks
 
 from ebrec.models.newsrec.dataloader import NRMSDataLoader, NRMSDataLoaderPretransform
-from ebrec.models.newsrec.model_config import hparams_nrms_docvec
+from ebrec.models.newsrec.model_config import (
+    hparams_nrms,
+    hparams_nrms_docvec,
+    hparams_to_dict,
+    print_hparams,
+)
 from ebrec.models.newsrec.nrms_docvec import NRMSDocVec
+from ebrec.models.newsrec import NRMSModel
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 # =====================================================================================
 # Model in use:
 model_func = NRMSDocVec
+hparams = hparams_nrms_docvec
+
 # Data-path
 PATH = Path("~/ebnerd_data").expanduser()
 DOC_VEC_PATH = PATH.joinpath(
@@ -41,15 +53,16 @@ DUMP_DIR.mkdir(exist_ok=True, parents=True)
 DT_NOW = dt.datetime.now()
 SEED = 123
 #
-MODEL_NAME = f"{model_func.__name__}-{DT_NOW}"
+MODEL_NAME = model_func.__name__
+ARTIFACT_DIR = f"{MODEL_NAME}-{DT_NOW}"
 #
-PREDICTION_DIR = DUMP_DIR.joinpath("test_predictions", MODEL_NAME)
+PREDICTION_DIR = DUMP_DIR.joinpath("test_predictions", ARTIFACT_DIR)
 # Model monitoring:
-MODEL_WEIGHTS = DUMP_DIR.joinpath(f"state_dict/{MODEL_NAME}/weights")
-LOG_DIR = DUMP_DIR.joinpath(f"runs/{MODEL_NAME}")
+MODEL_WEIGHTS = DUMP_DIR.joinpath(f"state_dict/{ARTIFACT_DIR}/weights")
+LOG_DIR = DUMP_DIR.joinpath(f"runs/{ARTIFACT_DIR}")
 # Evaluating the test test can be memory intensive, we'll chunk it up:
-TEST_CHUNKS_DUMP = PREDICTION_DIR.joinpath("test_chunks")
-TEST_CHUNKS_DUMP.mkdir(parents=True, exist_ok=True)
+TEST_CHUNKS_DIR = PREDICTION_DIR.joinpath("test_chunks")
+TEST_CHUNKS_DIR.mkdir(parents=True, exist_ok=True)
 N_CHUNKS_TEST = 10
 CHUNKS_DONE = 0  # if it crashes, you can start from here.
 # Just trying keeping the dataframe slime:
@@ -77,22 +90,28 @@ HISTORY_SIZE = 20
 NPRATIO = 4
 
 EPOCHS = 5
-TRAIN_FRACTION = 0.0001
-FRACTION_TEST = 0.0001
+TRAIN_FRACTION = 1.0
+FRACTION_TEST = 1.0
 
-hparams_nrms_docvec.title_size = 768
-hparams_nrms_docvec.history_size = HISTORY_SIZE
+hparams.title_size = 768
+hparams.history_size = HISTORY_SIZE
 # MODEL ARCHITECTURE
-hparams_nrms_docvec.head_num = 16
-hparams_nrms_docvec.head_dim = 16
-hparams_nrms_docvec.attention_hidden_dim = 200
+hparams.head_num = 16
+hparams.head_dim = 16
+hparams.attention_hidden_dim = 200
+hparams.newsencoder_units_per_layer = [512, 512, 512]
 # MODEL OPTIMIZER:
-hparams_nrms_docvec.optimizer = "adam"
-hparams_nrms_docvec.loss = "cross_entropy_loss"
-hparams_nrms_docvec.dropout = 0.2
-hparams_nrms_docvec.learning_rate = 1e-4
-hparams_nrms_docvec.newsencoder_l2_regularization = 1e-4
-hparams_nrms_docvec.newsencoder_units_per_layer = [512, 512, 512]
+hparams.optimizer = "adam"
+hparams.loss = "cross_entropy_loss"
+hparams.dropout = 0.2
+hparams.learning_rate = 1e-4
+hparams.newsencoder_l2_regularization = 1e-4
+# Store hparams
+print_hparams(hparams)
+write_json_file(
+    hparams_to_dict(hparams),
+    PREDICTION_DIR.joinpath(f"{MODEL_NAME}_hparams.json"),
+)
 
 # =====================================================================================
 # We'll use the training + validation sets for training.
@@ -184,9 +203,8 @@ lr_scheduler = tf.keras.callbacks.ReduceLROnPlateau(
 callbacks = [tensorboard_callback, early_stopping, modelcheckpoint, lr_scheduler]
 
 # =====================================================================================
-print(f"Initiating {model_func.__class__.__class__}, start training...")
 model = model_func(
-    hparams=hparams_nrms_docvec,
+    hparams=hparams,
     seed=42,
 )
 model.model.compile(
@@ -194,6 +212,7 @@ model.model.compile(
     loss=model.model.loss,
     metrics=["AUC"],
 )
+f"Initiating {MODEL_NAME}, start training..."
 # =>
 hist = model.model.fit(
     train_dataloader,
@@ -258,7 +277,7 @@ for i, df_test_chunk in enumerate(df_test_chunks[CHUNKS_DONE:], start=1 + CHUNKS
 
     # Save the processed chunk
     df_test_chunk.select(DEFAULT_IMPRESSION_ID_COL, "ranked_scores").write_parquet(
-        TEST_CHUNKS_DUMP.joinpath(f"pred_wo_ba_{i}.parquet")
+        TEST_CHUNKS_DIR.joinpath(f"pred_wo_ba_{i}.parquet")
     )
 
     # Append and clean up
@@ -270,7 +289,7 @@ for i, df_test_chunk in enumerate(df_test_chunks[CHUNKS_DONE:], start=1 + CHUNKS
 
 df_pred_test_wo_beyond = pl.concat(df_pred_test_wo_beyond)
 df_pred_test_wo_beyond.select(DEFAULT_IMPRESSION_ID_COL, "ranked_scores").write_parquet(
-    TEST_CHUNKS_DUMP.joinpath("pred_wo_ba.parquet")
+    TEST_CHUNKS_DIR.joinpath("pred_wo_ba.parquet")
 )
 # =====================================================================================
 print("Initiating testset with beyond-accuracy...")
@@ -291,7 +310,7 @@ df_pred_test_w_beyond = add_prediction_scores(
     .alias("ranked_scores")
 )
 df_pred_test_w_beyond.select(DEFAULT_IMPRESSION_ID_COL, "ranked_scores").write_parquet(
-    TEST_CHUNKS_DUMP.joinpath("pred_w_ba.parquet")
+    TEST_CHUNKS_DIR.joinpath("pred_w_ba.parquet")
 )
 
 # =====================================================================================
@@ -301,12 +320,12 @@ df_test.select(DEFAULT_IMPRESSION_ID_COL, "ranked_scores").write_parquet(
     PREDICTION_DIR.joinpath("test_predictions.parquet")
 )
 
-if TEST_CHUNKS_DUMP.exists() and TEST_CHUNKS_DUMP.is_dir():
-    shutil.rmtree(TEST_CHUNKS_DUMP)
+if TEST_CHUNKS_DIR.exists() and TEST_CHUNKS_DIR.is_dir():
+    shutil.rmtree(TEST_CHUNKS_DIR)
 
 write_submission_file(
     impression_ids=df_test[DEFAULT_IMPRESSION_ID_COL],
     prediction_scores=df_test["ranked_scores"],
     path=PREDICTION_DIR.joinpath("predictions.txt"),
-    filename_zip=f"{model_func.__name__}-{SEED}-{DATASPLIT}-{DT_NOW}.zip",
+    filename_zip=f"{MODEL_NAME}-{SEED}-{DATASPLIT}-{DT_NOW}.zip",
 )

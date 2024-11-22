@@ -13,6 +13,13 @@ def print_hparams(hparams_class):
         print(f"{attr}: {getattr(hparams_class, attr)}")
 
 
+def hparams_to_dict(hparams_class) -> dict:
+    params = {}
+    for attr, value in hparams_class.__annotations__.items():
+        params[attr] = getattr(hparams_class, attr)
+    return params
+
+
 class hparams_naml:
     # INPUT DIMENTIONS:
     title_size: int = DEFAULT_TITLE_SIZE

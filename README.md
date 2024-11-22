@@ -28,8 +28,14 @@ pip install .
 
 We have experienced issues installing *tensorflow* for M1 Macbooks (```sys_platform == 'darwin'```) when using conda. To avoid this, we suggest to use venv if running on macbooks.
 ```
-python3 -m venv venv
-source  venv/bin/activate
+python3 -m .venv .venv
+source  .venv/bin/activate
+```
+
+Installing ```.venv``` in project folder:
+```
+conda create -p .venv python==3.11.8
+conda activate ./.venv
 ```
 
 ## Running GPU
@@ -56,4 +62,35 @@ We have created a [notebook](https://github.com/ebanalyse/ebnerd-benchmark/blob/
 
 ## Data manipulation and enrichment
 In the [dataset_ebnerd](https://github.com/ebanalyse/ebnerd-benchmark/blob/main/examples/00_quick_start/dataset_ebnerd.ipynb) demo, we show how one can join histories and create binary labels.
+
+# Reproduce EB-NeRD Experiments
+
+Activate your enviroment:
+```
+conda activate <environment_name>
+```
+
+### [NRMSModel](https://github.com/ebanalyse/ebnerd-benchmark/blob/main/src/ebrec/models/newsrec/nrms.py) 
+
+```
+python examples/reproducibility_scripts/ebnerd_nrms.py
+```
+
+Tensorboards:
+```
+tensorboard --logdir=ebnerd_predictions/runs
+```
+
+### [NRMSDocVec](https://github.com/ebanalyse/ebnerd-benchmark/blob/main/src/ebrec/models/newsrec/nrms_docvec.py) 
+
+```
+python examples/reproducibility_scripts/ebnerd_nrms_docvec.py
+```
+
+Tensorboards:
+```
+tensorboard --logdir=ebnerd_predictions/runs
+```
+
+
 

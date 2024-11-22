@@ -1,5 +1,6 @@
 from itertools import compress
 from typing import Iterable
+from tqdm import tqdm
 import numpy as np
 import json
 
@@ -28,7 +29,9 @@ class AccuracyScore(Metric):
                 accuracy_score(
                     each_labels, convert_to_binary(each_preds, self.threshold)
                 )
-                for each_labels, each_preds in zip(y_true, y_pred)
+                for each_labels, each_preds in tqdm(
+                    zip(y_true, y_pred), ncols=80, total=len(y_true), desc="AUC"
+                )
             ]
         )
         return float(res)
@@ -43,7 +46,9 @@ class F1Score(Metric):
         res = np.mean(
             [
                 f1_score(each_labels, convert_to_binary(each_preds, self.threshold))
-                for each_labels, each_preds in zip(y_true, y_pred)
+                for each_labels, each_preds in tqdm(
+                    zip(y_true, y_pred), ncols=80, total=len(y_true), desc="AUC"
+                )
             ]
         )
         return float(res)
@@ -57,7 +62,9 @@ class RootMeanSquaredError(Metric):
         res = np.mean(
             [
                 np.sqrt(mean_squared_error(each_labels, each_preds))
-                for each_labels, each_preds in zip(y_true, y_pred)
+                for each_labels, each_preds in tqdm(
+                    zip(y_true, y_pred), ncols=80, total=len(y_true), desc="AUC"
+                )
             ]
         )
         return float(res)
@@ -71,7 +78,9 @@ class AucScore(Metric):
         res = np.mean(
             [
                 roc_auc_score(each_labels, each_preds)
-                for each_labels, each_preds in zip(y_true, y_pred)
+                for each_labels, each_preds in tqdm(
+                    zip(y_true, y_pred), ncols=80, total=len(y_true), desc="AUC"
+                )
             ]
         )
         return float(res)
@@ -88,7 +97,9 @@ class LogLossScore(Metric):
                     each_labels,
                     [max(min(p, 1.0 - 10e-12), 10e-12) for p in each_preds],
                 )
-                for each_labels, each_preds in zip(y_true, y_pred)
+                for each_labels, each_preds in tqdm(
+                    zip(y_true, y_pred), ncols=80, total=len(y_true), desc="AUC"
+                )
             ]
         )
         return float(res)
@@ -102,7 +113,9 @@ class MrrScore(Metric):
         mean_mrr = np.mean(
             [
                 mrr_score(each_labels, each_preds)
-                for each_labels, each_preds in zip(y_true, y_pred)
+                for each_labels, each_preds in tqdm(
+                    zip(y_true, y_pred), ncols=80, total=len(y_true), desc="AUC"
+                )
             ]
         )
         return float(mean_mrr)
@@ -117,7 +130,9 @@ class NdcgScore(Metric):
         res = np.mean(
             [
                 ndcg_score(each_labels, each_preds, self.k)
-                for each_labels, each_preds in zip(y_true, y_pred)
+                for each_labels, each_preds in tqdm(
+                    zip(y_true, y_pred), ncols=80, total=len(y_true), desc="AUC"
+                )
             ]
         )
         return float(res)

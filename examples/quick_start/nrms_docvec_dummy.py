@@ -1,5 +1,5 @@
 # TODO make a notebook with it
-from ebrec.models.newsrec.nrms_docvec import NRMSModel_docvec
+from ebrec.models.newsrec.nrms_docvec import NRMSDocVec
 from ebrec.models.newsrec.model_config import hparams_nrms
 import numpy as np
 
@@ -14,7 +14,7 @@ config.history_size = HISTORY_SIZE
 config.title_size = DOCVEC_DIM
 
 # MODEL:
-model = NRMSModel_docvec(hparams=config, newsencoder_units_per_layer=[512, 512])
+model = NRMSDocVec(hparams=config, newsencoder_units_per_layer=[512, 512])
 model.model.summary()
 
 #

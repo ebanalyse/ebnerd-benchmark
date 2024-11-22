@@ -118,8 +118,8 @@ LOG_DIR = DUMP_DIR.joinpath(f"runs/{MODEL_OUTPUT_NAME}")
 # Evaluating the test test can be memory intensive, we'll chunk it up:
 TEST_CHUNKS_DIR = ARTIFACT_DIR.joinpath("test_chunks")
 TEST_CHUNKS_DIR.mkdir(parents=True, exist_ok=True)
-N_CHUNKS_TEST = 10
-CHUNKS_DONE = 0  # if it crashes, you can start from here.
+N_CHUNKS_TEST = args.n_chunks_test
+CHUNKS_DONE = args.chunks_done  # if it crashes, you can start from here.
 # Just trying keeping the dataframe slime:
 COLUMNS = [
     DEFAULT_IMPRESSION_TIMESTAMP_COL,

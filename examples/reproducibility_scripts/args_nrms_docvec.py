@@ -72,6 +72,18 @@ def get_args():
         help="Data loader type (speed or memory efficient)",
     )
 
+    # Chunk processing
+    parser.add_argument(
+        "--n_chunks_test", type=int, default=10, help="Number of test chunks to process"
+    )
+    parser.add_argument(
+        "--chunks_done", type=int, default=0, help="Number of chunks already processed"
+    )
+
+    # =====================================================================================
+    #  ############################# UNIQUE FOR NRMSDocVec ###############################
+    # =====================================================================================
+
     # Model function and architecture
     parser.add_argument(
         "--title_size", type=int, default=768, help="Size of title encoding"

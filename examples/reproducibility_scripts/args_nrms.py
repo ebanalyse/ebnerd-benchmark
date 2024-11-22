@@ -5,6 +5,7 @@ def get_args():
     parser = argparse.ArgumentParser(
         description="Argument parser for NRMSModel training"
     )
+
     parser.add_argument(
         "--data_path",
         type=str,
@@ -71,6 +72,17 @@ def get_args():
         help="Data loader type (speed or memory efficient)",
     )
 
+    # Chunk processing
+    parser.add_argument(
+        "--n_chunks_test", type=int, default=10, help="Number of test chunks to process"
+    )
+    parser.add_argument(
+        "--chunks_done", type=int, default=0, help="Number of chunks already processed"
+    )
+
+    # =====================================================================================
+    #  ############################# UNIQUE FOR NRMSDocVec ###############################
+    # =====================================================================================
     # Transformer settings
     parser.add_argument(
         "--transformer_model_name",

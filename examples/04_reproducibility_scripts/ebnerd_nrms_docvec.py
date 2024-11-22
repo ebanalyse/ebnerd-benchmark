@@ -103,10 +103,14 @@ df = (
     pl.concat(
         [
             ebnerd_from_path(
-                PATH.joinpath(DATASPLIT, "train"), history_size=HISTORY_SIZE
+                PATH.joinpath(DATASPLIT, "train"),
+                history_size=HISTORY_SIZE,
+                padding=0,
             ),
             ebnerd_from_path(
-                PATH.joinpath(DATASPLIT, "validation"), history_size=HISTORY_SIZE
+                PATH.joinpath(DATASPLIT, "validation"),
+                history_size=HISTORY_SIZE,
+                padding=0,
             ),
         ]
     )
@@ -208,7 +212,11 @@ model.model.load_weights(MODEL_WEIGHTS)
 # =====================================================================================
 print("Initiating testset...")
 df_test = (
-    ebnerd_from_path(PATH.joinpath("ebnerd_testset", "test"), history_size=HISTORY_SIZE)
+    ebnerd_from_path(
+        PATH.joinpath("ebnerd_testset", "test"),
+        history_size=HISTORY_SIZE,
+        padding=0,
+    )
     .sample(fraction=FRACTION_TEST)
     .with_columns(
         pl.col(DEFAULT_INVIEW_ARTICLES_COL)

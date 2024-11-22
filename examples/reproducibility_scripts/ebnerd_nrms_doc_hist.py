@@ -44,6 +44,10 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 from args_nrms_docvec import get_args
 
 args = get_args()
+
+for arg, val in vars(args).items():
+    print(f"{arg} : {val}")
+
 PATH = Path(args.data_path).expanduser()
 # Access arguments as variables
 SEED = args.seed

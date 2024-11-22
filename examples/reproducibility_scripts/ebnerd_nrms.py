@@ -44,6 +44,10 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 from args_nrms import get_args
 
 args = get_args()
+
+for arg, val in vars(args).items():
+    print(f"{arg} : {val}")
+
 PATH = Path(args.data_path).expanduser()
 # Access arguments as variables
 SEED = args.seed
@@ -88,9 +92,6 @@ hparams.loss = args.loss
 hparams.dropout = args.dropout
 hparams.learning_rate = args.learning_rate
 
-
-print_hparams(hparams)
-
 # =============
 print("Initiating articles...")
 df_articles = pl.read_parquet(PATH.joinpath("articles.parquet"))
@@ -113,6 +114,7 @@ article_mapping = create_article_id_to_value_mapping(
 #  ############################# UNIQUE FOR NRMSDocVec ###############################
 # =====================================================================================
 
+print_hparams(hparams)
 
 # Dump paths:
 DUMP_DIR = Path("ebnerd_predictions")

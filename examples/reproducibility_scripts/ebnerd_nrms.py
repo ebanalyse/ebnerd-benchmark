@@ -16,6 +16,7 @@ from ebrec.utils._behaviors import (
     create_binary_labels_column,
     sampling_strategy_wu2019,
     add_prediction_scores,
+    truncate_history,
     ebnerd_from_path,
 )
 from ebrec.evaluation import MetricEvaluator, AucScore, NdcgScore, MrrScore
@@ -116,14 +117,14 @@ DUMP_DIR.mkdir(exist_ok=True, parents=True)
 DT_NOW = dt.datetime.now()
 #
 MODEL_NAME = model_func.__name__
-ARTIFACT_DIR = f"{MODEL_NAME}-{DT_NOW}"
+MODEL_OUTPUT_NAME = f"{MODEL_NAME}-{DT_NOW}"
 #
-PREDICTION_DIR = DUMP_DIR.joinpath("test_predictions", ARTIFACT_DIR)
+ARTIFACT_DIR = DUMP_DIR.joinpath("test_predictions", MODEL_OUTPUT_NAME)
 # Model monitoring:
-MODEL_WEIGHTS = DUMP_DIR.joinpath(f"state_dict/{ARTIFACT_DIR}/weights")
-LOG_DIR = DUMP_DIR.joinpath(f"runs/{ARTIFACT_DIR}")
+MODEL_WEIGHTS = DUMP_DIR.joinpath(f"state_dict/{MODEL_OUTPUT_NAME}/weights")
+LOG_DIR = DUMP_DIR.joinpath(f"runs/{MODEL_OUTPUT_NAME}")
 # Evaluating the test test can be memory intensive, we'll chunk it up:
-TEST_CHUNKS_DIR = PREDICTION_DIR.joinpath("test_chunks")
+TEST_CHUNKS_DIR = ARTIFACT_DIR.joinpath("test_chunks")
 TEST_CHUNKS_DIR.mkdir(parents=True, exist_ok=True)
 N_CHUNKS_TEST = 10
 CHUNKS_DONE = 0  # if it crashes, you can start from here.
@@ -139,7 +140,7 @@ COLUMNS = [
 # Store hparams
 write_json_file(
     hparams_to_dict(hparams),
-    PREDICTION_DIR.joinpath(f"{MODEL_NAME}_hparams.json"),
+    ARTIFACT_DIR.joinpath(f"{MODEL_NAME}_hparams.json"),
 )
 # =====================================================================================
 # We'll use the training + validation sets for training.
@@ -338,7 +339,7 @@ df_pred_test_w_beyond.select(DEFAULT_IMPRESSION_ID_COL, "ranked_scores").write_p
 print("Saving prediction results...")
 df_test = pl.concat([df_pred_test_wo_beyond, df_pred_test_w_beyond])
 df_test.select(DEFAULT_IMPRESSION_ID_COL, "ranked_scores").write_parquet(
-    PREDICTION_DIR.joinpath("test_predictions.parquet")
+    ARTIFACT_DIR.joinpath("test_predictions.parquet")
 )
 
 if TEST_CHUNKS_DIR.exists() and TEST_CHUNKS_DIR.is_dir():
@@ -347,6 +348,6 @@ if TEST_CHUNKS_DIR.exists() and TEST_CHUNKS_DIR.is_dir():
 write_submission_file(
     impression_ids=df_test[DEFAULT_IMPRESSION_ID_COL],
     prediction_scores=df_test["ranked_scores"],
-    path=PREDICTION_DIR.joinpath("predictions.txt"),
+    path=ARTIFACT_DIR.joinpath("predictions.txt"),
     filename_zip=f"{MODEL_NAME}-{SEED}-{DATASPLIT}.zip",
 )

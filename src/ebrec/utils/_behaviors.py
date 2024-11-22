@@ -1060,3 +1060,55 @@ def add_prediction_scores(
         .collect()
     )
     return df.with_columns(scores.select(prediction_scores_col)).drop(GROUPBY_ID)
+
+
+def down_sample_on_users(
+    df: pl.DataFrame,
+    n: int,
+    user_col: str = DEFAULT_USER_COL,
+    seed: int = None,
+) -> pl.DataFrame:
+    """
+    Down-samples a DataFrame by randomly selecting up to 'n' rows per unique user.
+
+    Args:
+        df (pl.DataFrame): The input DataFrame to be down-sampled.
+        n (int): The maximum number of rows to retain per user.
+        user_col (str): The column representing user identifiers. Defaults to DEFAULT_USER_COL.
+        seed (int, optional): The random seed for reproducibility. Defaults to None.
+
+    Returns:
+        pl.DataFrame: A down-sampled DataFrame with at most 'n' rows per user.
+    >>> import polars as pl
+    >>> df = pl.DataFrame(
+            {
+                "user_id": [1, 1, 1, 2, 2, 3],
+                "value": [10, 20, 30, 40, 50, 60],
+            }
+        )
+    >>> down_sample_on_users(df, n=2, user_col="user_id", seed=42)
+        shape: (5, 2)
+        ┌─────────┬───────┐
+        │ user_id ┆ value │
+        │ ---     ┆ ---   │
+        │ i64     ┆ i64   │
+        ╞═════════╪═══════╡
+        │ 1       ┆ 10    │
+        │ 1       ┆ 20    │
+        │ 2       ┆ 40    │
+        │ 2       ┆ 50    │
+        │ 3       ┆ 60    │
+        └─────────┴───────┘
+    """
+
+    GROUPBY_ID = generate_unique_name(df.columns, "_groupby_id")
+    df = df.with_row_index(GROUPBY_ID)
+
+    filter_index = (
+        df.sample(fraction=1.0, shuffle=True, seed=seed)
+        .group_by(pl.col(user_col))
+        .agg(GROUPBY_ID)
+        .with_columns(pl.col(GROUPBY_ID).list.tail(n))
+    ).select(pl.col(GROUPBY_ID).explode())
+
+    return df.filter(pl.col(GROUPBY_ID).is_in(filter_index)).drop(GROUPBY_ID)

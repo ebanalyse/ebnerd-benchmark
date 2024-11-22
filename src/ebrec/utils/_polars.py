@@ -336,7 +336,12 @@ def filter_maximum_lengths_from_list(
     )
 
 
-def split_df(df, fraction=0.8, seed: int = None, shuffle: bool = True):
+def split_df_fraction(
+    df: pl.DataFrame,
+    fraction=0.8,
+    seed: int = None,
+    shuffle: bool = True,
+):
     """
     Splits a DataFrame into two parts based on a specified fraction.
     >>> df = pl.DataFrame({'A': range(10), 'B': range(10, 20)})
@@ -351,6 +356,54 @@ def split_df(df, fraction=0.8, seed: int = None, shuffle: bool = True):
     df = df.sample(fraction=1.0, shuffle=shuffle, seed=seed)
     n_split_sample = int(len(df) * fraction)
     return df[:n_split_sample], df[n_split_sample:]
+
+
+def split_df_chunks(df: pl.DataFrame, n_chucks: int):
+    """
+    Splits a DataFrame into a specified number of chunks.
+
+    Args:
+        df (pl.DataFrame): The DataFrame to be split into chunks.
+        n_chunks (int): The number of chunks to divide the DataFrame into.
+
+    Returns:
+        list: A list of DataFrame chunks. Each element in the list is a DataFrame
+        representing a chunk of the original data.
+
+    Examples
+    >>> import polars as pl
+    >>> df = pl.DataFrame({'A': range(3)})
+    >>> chunks = split_df_chunks(df, 2)
+    >>> chunks
+        [shape: (1, 1)
+        ┌─────┐
+        │ A   │
+        │ --- │
+        │ i64 │
+        ╞═════╡
+        │ 0   │
+        └─────┘, shape: (2, 1)
+        ┌─────┐
+        │ A   │
+        │ --- │
+        │ i64 │
+        ╞═════╡
+        │ 1   │
+        │ 2   │
+        └─────┘]
+    """
+    # Calculate the number of rows per chunk
+    chunk_size = df.height // n_chucks
+
+    # Split the DataFrame into chunks
+    chunks = [df[i * chunk_size : (i + 1) * chunk_size] for i in range(n_chucks)]
+
+    # Append the remainder rows to the last chunk
+    if df.height % n_chucks != 0:
+        remainder_start_idx = n_chucks * chunk_size
+        chunks[-1] = pl.concat([chunks[-1], df[remainder_start_idx:]])
+
+    return chunks
 
 
 def drop_nulls_from_list(df: pl.DataFrame, column: str) -> pl.DataFrame:
@@ -716,17 +769,3 @@ def concat_list_str(df: pl.DataFrame, column: str) -> pl.DataFrame:
     return df.with_columns(
         pl.col(column).list.eval(pl.element().str.concat(" "))
     ).explode(column)
-
-
-def chunk_dataframe(df, n_chunks):
-    # Calculate the number of rows per chunk
-    chunk_size = df.height // n_chunks
-
-    # Split the DataFrame into chunks
-    chunks = [df[i * chunk_size : (i + 1) * chunk_size] for i in range(n_chunks)]
-
-    # Handle the remainder if there are leftover rows
-    if df.height % n_chunks != 0:
-        chunks.append(df[n_chunks * chunk_size :])
-
-    return chunks

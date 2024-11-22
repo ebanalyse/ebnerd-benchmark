@@ -7,6 +7,7 @@ import inspect
 
 
 from ebrec.utils._polars import (
+    slice_join_dataframes,
     _check_columns_in_df,
     drop_nulls_from_list,
     generate_unique_name,
@@ -14,15 +15,7 @@ from ebrec.utils._polars import (
 )
 import polars as pl
 
-from ebrec.utils._constants import (
-    DEFAULT_IMPRESSION_TIMESTAMP_COL,
-    DEFAULT_CLICKED_ARTICLES_COL,
-    DEFAULT_INVIEW_ARTICLES_COL,
-    DEFAULT_ARTICLE_ID_COL,
-    DEFAULT_KNOWN_USER_COL,
-    DEFAULT_LABELS_COL,
-    DEFAULT_USER_COL,
-)
+from ebrec.utils._constants import *
 from ebrec.utils._python import create_lookup_dict
 
 
@@ -163,6 +156,40 @@ def filter_minimum_negative_samples(
         if n is not None and n > 0
         else df
     )
+
+
+def ebnerd_from_path(
+    path: Path,
+    history_size: int = 30,
+    padding: int = 0,
+    user_col: str = DEFAULT_USER_COL,
+    history_aids_col: str = DEFAULT_HISTORY_ARTICLE_ID_COL,
+) -> pl.DataFrame:
+    """
+    Load ebnerd - function
+    """
+    df_history = (
+        pl.scan_parquet(path.joinpath("history.parquet"))
+        .select(user_col, history_aids_col)
+        .pipe(
+            truncate_history,
+            column=history_aids_col,
+            history_size=history_size,
+            padding_value=padding,
+            enable_warning=False,
+        )
+    )
+    df_behaviors = (
+        pl.scan_parquet(path.joinpath("behaviors.parquet"))
+        .collect()
+        .pipe(
+            slice_join_dataframes,
+            df2=df_history.collect(),
+            on=user_col,
+            how="left",
+        )
+    )
+    return df_behaviors
 
 
 def filter_read_times(df, n: int, column: str) -> pl.DataFrame:

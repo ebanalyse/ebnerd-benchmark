@@ -84,7 +84,7 @@ tensorboard --logdir=ebnerd_predictions/runs
 ### [NRMSDocVec](https://github.com/ebanalyse/ebnerd-benchmark/blob/main/src/ebrec/models/newsrec/nrms_docvec.py) 
 
 ```
-python examples/reproducibility_scripts/ebnerd_nrms_docvec.py --history_size 60
+python examples/reproducibility_scripts/ebnerd_nrms_docvec.py
 ```
 
 Tensorboards:

@@ -87,9 +87,6 @@ def get_args():
 
     # Hyperparameters
     parser.add_argument(
-        "--history_size", type=int, default=20, help="History size for the model"
-    )
-    parser.add_argument(
         "--head_num", type=int, default=20, help="Number of attention heads"
     )
     parser.add_argument(

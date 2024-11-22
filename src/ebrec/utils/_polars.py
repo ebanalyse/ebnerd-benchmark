@@ -358,7 +358,7 @@ def split_df_fraction(
     return df[:n_split_sample], df[n_split_sample:]
 
 
-def split_df_chunks(df: pl.DataFrame, n_chucks: int):
+def split_df_chunks(df: pl.DataFrame, n_chunks: int):
     """
     Splits a DataFrame into a specified number of chunks.
 
@@ -393,14 +393,14 @@ def split_df_chunks(df: pl.DataFrame, n_chucks: int):
         └─────┘]
     """
     # Calculate the number of rows per chunk
-    chunk_size = df.height // n_chucks
+    chunk_size = df.height // n_chunks
 
     # Split the DataFrame into chunks
-    chunks = [df[i * chunk_size : (i + 1) * chunk_size] for i in range(n_chucks)]
+    chunks = [df[i * chunk_size : (i + 1) * chunk_size] for i in range(n_chunks)]
 
     # Append the remainder rows to the last chunk
-    if df.height % n_chucks != 0:
-        remainder_start_idx = n_chucks * chunk_size
+    if df.height % n_chunks != 0:
+        remainder_start_idx = n_chunks * chunk_size
         chunks[-1] = pl.concat([chunks[-1], df[remainder_start_idx:]])
 
     return chunks

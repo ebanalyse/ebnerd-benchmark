@@ -2,6 +2,7 @@ from pathlib import Path
 import tensorflow as tf
 import datetime as dt
 import polars as pl
+import shutil
 import gc
 import os
 
@@ -25,7 +26,7 @@ from ebrec.models.newsrec.nrms_docvec import NRMSModel_docvec
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-# conda activate ./venv/; python nrms_ebnerd_doc_large.py
+# conda activate ./venv/; python examples/04_reproducibility_scripts/ebnerd_nrms_docvec.py
 # conda activate ./venv/; tensorboard --logdir=ebnerd_predictions/runs
 
 # =====================================================================================
@@ -44,11 +45,13 @@ DT_NOW = dt.datetime.now()
 SEED = 123
 #
 MODEL_NAME = f"{model_func.__name__}-{DT_NOW}"
+#
+PREDICTION_DIR = DUMP_DIR.joinpath("test_predictions", MODEL_NAME)
 # Model monitoring:
 MODEL_WEIGHTS = DUMP_DIR.joinpath(f"state_dict/{MODEL_NAME}/weights")
 LOG_DIR = DUMP_DIR.joinpath(f"runs/{MODEL_NAME}")
 # Evaluating the test test can be memory intensive, we'll chunk it up:
-TEST_CHUNKS_DUMP = DUMP_DIR.joinpath("test_predictions", MODEL_NAME, "test_chunks")
+TEST_CHUNKS_DUMP = PREDICTION_DIR.joinpath("test_chunks")
 TEST_CHUNKS_DUMP.mkdir(parents=True, exist_ok=True)
 N_CHUNKS_TEST = 10
 CHUNKS_DONE = 0  # if it crashes, you can start from here.
@@ -77,8 +80,8 @@ HISTORY_SIZE = 20
 NPRATIO = 4
 
 EPOCHS = 5
-TRAIN_FRACTION = 1.0
-FRACTION_TEST = 1.0
+TRAIN_FRACTION = 0.0001
+FRACTION_TEST = 0.0001
 
 hparams_nrms_docvec.title_size = 768
 hparams_nrms_docvec.history_size = HISTORY_SIZE
@@ -290,11 +293,15 @@ df_pred_test_w_beyond.select(DEFAULT_IMPRESSION_ID_COL, "ranked_scores").write_p
 print("Saving prediction results...")
 df_test = pl.concat([df_pred_test_wo_beyond, df_pred_test_w_beyond])
 df_test.select(DEFAULT_IMPRESSION_ID_COL, "ranked_scores").write_parquet(
-    TEST_CHUNKS_DUMP.parent.joinpath("test_predictions.parquet")
+    PREDICTION_DIR.joinpath("test_predictions.parquet")
 )
+
+if TEST_CHUNKS_DUMP.exists() and TEST_CHUNKS_DUMP.is_dir():
+    shutil.rmtree(TEST_CHUNKS_DUMP)
+
 write_submission_file(
     impression_ids=df_test[DEFAULT_IMPRESSION_ID_COL],
     prediction_scores=df_test["ranked_scores"],
-    path=DUMP_DIR.joinpath("predictions.txt"),
-    filename_zip=f"{DATASPLIT}_predictions-{MODEL_NAME}.zip",
+    path=PREDICTION_DIR.joinpath("predictions.txt"),
+    filename_zip=f"{model_func.__name__}-{SEED}-{DATASPLIT}-{DT_NOW}.zip",
 )

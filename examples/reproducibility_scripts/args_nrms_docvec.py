@@ -84,6 +84,12 @@ def get_args():
     #  ############################# UNIQUE FOR NRMSDocVec ###############################
     # =====================================================================================
 
+    parser.add_argument(
+        "--document_embeddings",
+        type=str,
+        default="Ekstra_Bladet_contrastive_vector/contrastive_vector.parquet",
+        help="Path to the document embeddings file",
+    )
     # Model function and architecture
     parser.add_argument(
         "--title_size", type=int, default=768, help="Size of title encoding"

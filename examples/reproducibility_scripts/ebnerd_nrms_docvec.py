@@ -92,9 +92,7 @@ hparams.newsencoder_l2_regularization = args.newsencoder_l2_regularization
 
 # =============
 # Data-path
-DOC_VEC_PATH = PATH.joinpath(
-    "artifacts/Ekstra_Bladet_contrastive_vector/contrastive_vector.parquet"
-)
+DOC_VEC_PATH = PATH.joinpath(f"artifacts/{args.document_embeddings}")
 print("Initiating articles...")
 df_articles = pl.read_parquet(DOC_VEC_PATH)
 article_mapping = create_article_id_to_value_mapping(

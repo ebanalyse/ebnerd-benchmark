@@ -5,6 +5,7 @@ def get_args():
     parser = argparse.ArgumentParser(
         description="Argument parser for NRMSModel training"
     )
+
     parser.add_argument(
         "--data_path",
         type=str,
@@ -71,35 +72,28 @@ def get_args():
         help="Data loader type (speed or memory efficient)",
     )
 
-    # Transformer settings
+    # Model function and architecture
     parser.add_argument(
-        "--transformer_model_name",
-        type=str,
-        default="Maltehb/danish-bert-botxo",
-        help="Transformer model name",
+        "--title_size", type=int, default=768, help="Size of title encoding"
     )
     parser.add_argument(
-        "--max_title_length",
-        type=int,
-        default=30,
-        help="Maximum length of title encoding",
-    )
-
-    # Hyperparameters
-    parser.add_argument(
-        "--history_size", type=int, default=20, help="History size for the model"
+        "--head_num", type=int, default=16, help="Number of attention heads"
     )
     parser.add_argument(
-        "--head_num", type=int, default=20, help="Number of attention heads"
-    )
-    parser.add_argument(
-        "--head_dim", type=int, default=20, help="Dimension of each attention head"
+        "--head_dim", type=int, default=16, help="Dimension of each attention head"
     )
     parser.add_argument(
         "--attention_hidden_dim",
         type=int,
         default=200,
         help="Dimension of attention hidden layers",
+    )
+    parser.add_argument(
+        "--newsencoder_units_per_layer",
+        nargs="+",
+        type=int,
+        default=[512, 512, 512],
+        help="List of units per layer in the news encoder",
     )
 
     # Optimizer settings
@@ -109,9 +103,15 @@ def get_args():
     parser.add_argument(
         "--loss", type=str, default="cross_entropy_loss", help="Loss function"
     )
-    parser.add_argument("--dropout", type=float, default=0.20, help="Dropout rate")
+    parser.add_argument("--dropout", type=float, default=0.2, help="Dropout rate")
     parser.add_argument(
         "--learning_rate", type=float, default=1e-4, help="Learning rate"
+    )
+    parser.add_argument(
+        "--newsencoder_l2_regularization",
+        type=float,
+        default=1e-4,
+        help="L2 regularization for the news encoder",
     )
 
     return parser.parse_args()

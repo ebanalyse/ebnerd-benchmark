@@ -41,22 +41,31 @@ from ebrec.models.newsrec import NRMSModel
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-PATH = Path("~/ebnerd_data").expanduser()
-SEED = 123
-DATASPLIT = "ebnerd_small"
-BS_TRAIN = 32
-BS_TEST = 32
-BATCH_SIZE_TEST_WO_B = 32
-BATCH_SIZE_TEST_W_B = 4
-HISTORY_SIZE = 20
-NPRATIO = 4
-EPOCHS = 5
-DEBUG = True
-TRAIN_FRACTION = 1.0 if not DEBUG else 0.0001
-FRACTION_TEST = 1.0 if not DEBUG else 0.0001
-# - NRMSDataLoaderPretransform: speed efficient.
-# - NRMSDataLoader: memory efficient.
-NRMSLoader_training = NRMSDataLoaderPretransform  # NRMSDataLoader
+
+#
+from args_nrms_docvec import get_args
+
+args = get_args()
+PATH = Path(args.data_path).expanduser()
+# Access arguments as variables
+SEED = args.seed
+DATASPLIT = args.datasplit
+DEBUG = args.debug
+BS_TRAIN = args.bs_train
+BS_TEST = args.bs_test
+BATCH_SIZE_TEST_WO_B = args.batch_size_test_wo_b
+BATCH_SIZE_TEST_W_B = args.batch_size_test_w_b
+HISTORY_SIZE = args.history_size
+NPRATIO = args.npratio
+EPOCHS = args.epochs
+TRAIN_FRACTION = args.train_fraction if not DEBUG else 0.0001
+FRACTION_TEST = args.fraction_test if not DEBUG else 0.0001
+
+NRMSLoader_training = (
+    NRMSDataLoaderPretransform
+    if args.nrms_loader == "NRMSDataLoaderPretransform"
+    else NRMSDataLoader
+)
 
 # =====================================================================================
 #  ############################# UNIQUE FOR NRMSModel ################################
@@ -65,21 +74,18 @@ NRMSLoader_training = NRMSDataLoaderPretransform  # NRMSDataLoader
 # Model in use:
 model_func = NRMSDocVec
 hparams = hparams_nrms_docvec
-
-## NRMSDocVec:
-hparams.title_size = 768
-hparams.history_size = HISTORY_SIZE
-# MODEL ARCHITECTURE
-hparams.head_num = 16
-hparams.head_dim = 16
-hparams.attention_hidden_dim = 200
-hparams.newsencoder_units_per_layer = [512, 512, 512]
-# MODEL OPTIMIZER:
-hparams.optimizer = "adam"
-hparams.loss = "cross_entropy_loss"
-hparams.dropout = 0.2
-hparams.learning_rate = 1e-4
-hparams.newsencoder_l2_regularization = 1e-4
+#
+hparams.title_size = args.title_size
+hparams.history_size = args.history_size
+hparams.head_num = args.head_num
+hparams.head_dim = args.head_dim
+hparams.attention_hidden_dim = args.attention_hidden_dim
+hparams.newsencoder_units_per_layer = args.newsencoder_units_per_layer
+hparams.optimizer = args.optimizer
+hparams.loss = args.loss
+hparams.dropout = args.dropout
+hparams.learning_rate = args.learning_rate
+hparams.newsencoder_l2_regularization = args.newsencoder_l2_regularization
 print_hparams(hparams)
 
 # =============

@@ -41,22 +41,29 @@ from ebrec.models.newsrec import NRMSModel
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-PATH = Path("~/ebnerd_data").expanduser()
-SEED = 123
-DATASPLIT = "ebnerd_small"
-BS_TRAIN = 32
-BS_TEST = 32
-BATCH_SIZE_TEST_WO_B = 32
-BATCH_SIZE_TEST_W_B = 4
-HISTORY_SIZE = 20
-NPRATIO = 4
-EPOCHS = 5
-DEBUG = True
-TRAIN_FRACTION = 1.0 if not DEBUG else 0.0001
-FRACTION_TEST = 1.0 if not DEBUG else 0.0001
-# - NRMSDataLoaderPretransform: speed efficient.
-# - NRMSDataLoader: memory efficient.
-NRMSLoader_training = NRMSDataLoaderPretransform  # NRMSDataLoader
+from args_nrms import get_args
+
+args = get_args()
+PATH = Path(args.data_path).expanduser()
+# Access arguments as variables
+SEED = args.seed
+DATASPLIT = args.datasplit
+DEBUG = args.debug
+BS_TRAIN = args.bs_train
+BS_TEST = args.bs_test
+BATCH_SIZE_TEST_WO_B = args.batch_size_test_wo_b
+BATCH_SIZE_TEST_W_B = args.batch_size_test_w_b
+HISTORY_SIZE = args.history_size
+NPRATIO = args.npratio
+EPOCHS = args.epochs
+TRAIN_FRACTION = args.train_fraction if not DEBUG else 0.0001
+FRACTION_TEST = args.fraction_test if not DEBUG else 0.0001
+
+NRMSLoader_training = (
+    NRMSDataLoaderPretransform
+    if args.nrms_loader == "NRMSDataLoaderPretransform"
+    else NRMSDataLoader
+)
 
 # =====================================================================================
 #  ############################# UNIQUE FOR NRMSModel ################################
@@ -68,17 +75,19 @@ hparams = hparams_nrms
 
 ## NRMSModel:
 TEXT_COLUMNS_TO_USE = [DEFAULT_TITLE_COL, DEFAULT_SUBTITLE_COL, DEFAULT_BODY_COL]
-TRANSFORMER_MODEL_NAME = "Maltehb/danish-bert-botxo"
-MAX_TITLE_LENGTH = 30
+
+TRANSFORMER_MODEL_NAME = args.transformer_model_name
+MAX_TITLE_LENGTH = args.max_title_length
 hparams.title_size = MAX_TITLE_LENGTH
-hparams.history_size = HISTORY_SIZE
-hparams.head_num = 20
-hparams.head_dim = 20
-hparams.attention_hidden_dim = 200
-hparams.optimizer = "adam"
-hparams.loss = "cross_entropy_loss"
-hparams.dropout = 0.20
-hparams.learning_rate = 1e-4
+hparams.history_size = args.history_size
+hparams.head_num = args.head_num
+hparams.head_dim = args.head_dim
+hparams.attention_hidden_dim = args.attention_hidden_dim
+hparams.optimizer = args.optimizer
+hparams.loss = args.loss
+hparams.dropout = args.dropout
+hparams.learning_rate = args.learning_rate
+
 
 print_hparams(hparams)
 

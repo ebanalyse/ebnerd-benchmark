@@ -134,6 +134,8 @@ write_json_file(
     hparams_to_dict(hparams),
     ARTIFACT_DIR.joinpath(f"{MODEL_NAME}_hparams.json"),
 )
+write_json_file(vars(args), ARTIFACT_DIR.joinpath(f"{MODEL_NAME}_argparser.json"))
+
 # =====================================================================================
 # We'll use the training + validation sets for training.
 df = (

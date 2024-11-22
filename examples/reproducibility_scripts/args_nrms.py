@@ -87,7 +87,7 @@ def get_args():
     parser.add_argument(
         "--transformer_model_name",
         type=str,
-        default="Maltehb/danish-bert-botxo",
+        default="FacebookAI/xlm-roberta-large",
         help="Transformer model name",
     )
     parser.add_argument(

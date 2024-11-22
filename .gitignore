@@ -21,8 +21,8 @@ eggs/
 lib/
 var/
 *.egg
-venv/
 build
+.venv
 venv
 
 # just for now:

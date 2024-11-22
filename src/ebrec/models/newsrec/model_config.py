@@ -100,5 +100,5 @@ class hparams_nrms_docvec:
     loss: str = "cross_entropy_loss"
     dropout: float = 0.2
     learning_rate: float = 1e-4
-    newsencoder_units_per_layer: list[int] = [256, 256, 256]
+    newsencoder_units_per_layer: list[int] = [512, 512, 512]
     newsencoder_l2_regularization: float = 1e-4

@@ -30,7 +30,7 @@ from ebrec.utils._python import write_submission_file, rank_predictions_by_score
 
 from ebrec.models.newsrec.dataloader import NRMSDataLoader, NRMSDataLoaderPretransform
 from ebrec.models.newsrec.model_config import hparams_nrms, hparams_nrms_docvec
-from ebrec.models.newsrec.nrms_docvec import NRMSModel_docvec
+from ebrec.models.newsrec.nrms_docvec import NRMSDocVec
 from ebrec.models.newsrec import NRMSModel
 
 from utils import ebnerd_from_path, PATH, COLUMNS, DUMP_DIR, down_sample_on_users
@@ -38,7 +38,7 @@ from utils import ebnerd_from_path, PATH, COLUMNS, DUMP_DIR, down_sample_on_user
 # conda activate ./venv/; python nrms_ebnerd_doc_hist.py.py
 # conda activate ./venv/; tensorboard --logdir=ebnerd_predictions/runs
 
-model_func = NRMSModel_docvec
+model_func = NRMSDocVec
 DT_NOW = dt.datetime.now().strftime("%Y-%m-%d %H-%M-%S")
 SEED = 123
 

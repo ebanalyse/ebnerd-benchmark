@@ -5,8 +5,10 @@ import tensorflow as tf
 import numpy as np
 
 
-class NRMSModel_docvec:
-    """NRMS model(Neural News Recommendation with Multi-Head Self-Attention)
+class NRMSDocVec:
+    """
+    Modified NRMS model (Neural News Recommendation with Multi-Head Self-Attention)
+    - Initiated with article-embeddings.
 
     Chuhan Wu, Fangzhao Wu, Suyu Ge, Tao Qi, Yongfeng Huang,and Xing Xie, "Neural News
     Recommendation with Multi-Head Self-Attention" in Proceedings of the 2019 Conference
@@ -20,12 +22,10 @@ class NRMSModel_docvec:
         self,
         hparams: dict,
         seed: int = None,
-        newsencoder_units_per_layer: list[int] = [512, 512, 512],
     ):
         """Initialization steps for NRMS."""
         self.hparams = hparams
         self.seed = seed
-        self.newsencoder_units_per_layer = newsencoder_units_per_layer
 
         # SET SEED:
         tf.random.set_seed(seed)
@@ -165,7 +165,7 @@ class NRMSModel_docvec:
             pred_input_title_one
         )
         titleencoder = self._build_newsencoder(
-            units_per_layer=self.newsencoder_units_per_layer
+            units_per_layer=self.hparams.newsencoder_units_per_layer
         )
         self.userencoder = self._build_userencoder(titleencoder)
         self.newsencoder = titleencoder

@@ -24,7 +24,7 @@ from ebrec.utils._python import write_submission_file, rank_predictions_by_score
 
 from ebrec.models.newsrec.dataloader import NRMSDataLoader, NRMSDataLoaderPretransform
 from ebrec.models.newsrec.model_config import hparams_nrms, hparams_nrms_docvec
-from ebrec.models.newsrec.nrms_docvec import NRMSModel_docvec
+from ebrec.models.newsrec.nrms_docvec import NRMSDocVec
 from ebrec.models.newsrec import NRMSModel
 
 from utils import ebnerd_from_path, PATH, COLUMNS, DUMP_DIR, down_sample_on_users

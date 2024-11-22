@@ -22,16 +22,13 @@ from ebrec.utils._polars import split_df_chunks
 
 from ebrec.models.newsrec.dataloader import NRMSDataLoader, NRMSDataLoaderPretransform
 from ebrec.models.newsrec.model_config import hparams_nrms_docvec
-from ebrec.models.newsrec.nrms_docvec import NRMSModel_docvec
+from ebrec.models.newsrec.nrms_docvec import NRMSDocVec
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-# conda activate ./venv/; python examples/04_reproducibility_scripts/ebnerd_nrms_docvec.py
-# conda activate ./venv/; tensorboard --logdir=ebnerd_predictions/runs
-
 # =====================================================================================
 # Model in use:
-model_func = NRMSModel_docvec
+model_func = NRMSDocVec
 # Data-path
 PATH = Path("~/ebnerd_data").expanduser()
 DOC_VEC_PATH = PATH.joinpath(
@@ -95,7 +92,7 @@ hparams_nrms_docvec.loss = "cross_entropy_loss"
 hparams_nrms_docvec.dropout = 0.2
 hparams_nrms_docvec.learning_rate = 1e-4
 hparams_nrms_docvec.newsencoder_l2_regularization = 1e-4
-hparams_nrms_docvec.newsencoder_units_per_layer = [256, 256, 256]
+hparams_nrms_docvec.newsencoder_units_per_layer = [512, 512, 512]
 
 # =====================================================================================
 # We'll use the training + validation sets for training.

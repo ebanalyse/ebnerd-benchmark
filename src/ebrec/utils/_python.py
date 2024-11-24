@@ -482,3 +482,28 @@ def create_lookup_objects(
 
     lookup_matrix = np.vstack([UNKNOWN_ARRAY, lookup_matrix])
     return lookup_indexes, lookup_matrix
+
+
+def batch_items_generator(items: Iterable[any], batch_size: int):
+    """
+    Generator function that chunks a list of items into batches of a specified size.
+
+    Args:
+        items (list): The list of items to be chunked.
+        batch_size (int): The number of items to include in each batch.
+
+    Yields:
+        list: A batch of items from the input list.
+
+    Examples:
+        >>> items = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+        >>> batch_size = 3
+        >>> for batch in chunk_list(items, batch_size):
+        ...     print(batch)
+        [1, 2, 3]
+        [4, 5, 6]
+        [7, 8, 9]
+        [10]
+    """
+    for i in range(0, len(items), batch_size):
+        yield items[i : i + batch_size]

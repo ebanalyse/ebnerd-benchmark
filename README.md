@@ -74,6 +74,19 @@ conda activate <environment_name>
 
 ```
 python examples/reproducibility_scripts/ebnerd_nrms.py
+  --datasplit ebnerd_small \
+  --epochs 5 \
+  --bs_train 32 \
+  --bs_test 32 \
+  --history_size 20 \
+  --npratio 4 \
+  --transformer_model_name FacebookAI/xlm-roberta-large \
+  --max_title_length 30 \
+  --head_num 20 \
+  --head_dim 20 \
+  --attention_hidden_dim 200 \
+  --learning_rate 1e-4 \
+  --dropout 0.20
 ```
 
 Tensorboards:
@@ -84,7 +97,20 @@ tensorboard --logdir=ebnerd_predictions/runs
 ### [NRMSDocVec](https://github.com/ebanalyse/ebnerd-benchmark/blob/main/src/ebrec/models/newsrec/nrms_docvec.py) 
 
 ```
-python examples/reproducibility_scripts/ebnerd_nrms_docvec.py
+python examples/reproducibility_scripts/ebnerd_nrms_docvec.py \
+  --datasplit ebnerd_small \
+  --epochs 5 \
+  --bs_train 32 \
+  --history_size 20 \
+  --npratio 4 \
+  --document_embeddings Ekstra_Bladet_contrastive_vector/contrastive_vector.parquet \
+  --head_num 16 \
+  --head_dim 16 \
+  --attention_hidden_dim 200 \
+  --newsencoder_units_per_layer 512 512 512 \
+  --learning_rate 1e-4 \
+  --dropout 0.2 \
+  --newsencoder_l2_regularization 1e-4
 ```
 
 Tensorboards:

@@ -113,7 +113,7 @@ class NRMSModel:
         model = tf.keras.Model(his_input_title, user_present, name="user_encoder")
         return model
 
-    def _build_newsencoder(self):
+    def _build_newsencoder(self, units_per_layer: list[int] = None):
         """The main function to create news encoder of NRMS.
 
         Args:
@@ -138,13 +138,21 @@ class NRMSModel:
             [y, y, y]
         )
 
-        # Create configurable Dense layers:
-        for layer in [400, 400, 400]:
-            y = tf.keras.layers.Dense(units=layer, activation="relu")(y)
-            y = tf.keras.layers.BatchNormalization()(y)
+        # Create configurable Dense layers (the if - else is something I've added):
+        if units_per_layer:
+            for layer in units_per_layer:
+                y = tf.keras.layers.Dense(
+                    units=layer,
+                    activation="relu",
+                    kernel_regularizer=tf.keras.regularizers.l2(
+                        self.hparams.newsencoder_l2_regularization
+                    ),
+                )(y)
+                y = tf.keras.layers.BatchNormalization()(y)
+                y = tf.keras.layers.Dropout(self.hparams.dropout)(y)
+        else:
             y = tf.keras.layers.Dropout(self.hparams.dropout)(y)
 
-        y = tf.keras.layers.Dropout(self.hparams.dropout)(y)
         pred_title = AttLayer2(self.hparams.attention_hidden_dim, seed=self.seed)(y)
 
         model = tf.keras.Model(sequences_input_title, pred_title, name="news_encoder")
@@ -178,7 +186,9 @@ class NRMSModel:
         pred_title_one_reshape = tf.keras.layers.Reshape((self.hparams.title_size,))(
             pred_input_title_one
         )
-        titleencoder = self._build_newsencoder()
+        titleencoder = self._build_newsencoder(
+            units_per_layer=self.hparams.newsencoder_units_per_layer
+        )
         self.userencoder = self._build_userencoder(titleencoder)
         self.newsencoder = titleencoder
 

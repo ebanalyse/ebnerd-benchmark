@@ -92,6 +92,9 @@ hparams.loss = args.loss
 hparams.dropout = args.dropout
 hparams.learning_rate = args.learning_rate
 
+#
+hparams.newsencoder_units_per_layer = None  # [400, 400, 400]
+
 # =============
 print("Initiating articles...")
 df_articles = pl.read_parquet(PATH.joinpath("articles.parquet"))
@@ -243,6 +246,7 @@ model.model.compile(
     loss=model.model.loss,
     metrics=["AUC"],
 )
+print(model.model.summary())
 f"Initiating {MODEL_NAME}, start training..."
 # =>
 hist = model.model.fit(

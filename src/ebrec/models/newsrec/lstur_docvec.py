@@ -4,47 +4,31 @@ from ebrec.models.newsrec.layers import AttLayer2, ComputeMasking, OverwriteMask
 from ebrec.models.newsrec.base_model import BaseModel
 from tensorflow.keras import layers
 import tensorflow.keras as keras
-
 import tensorflow as tf
 import numpy as np
 
 __all__ = ["LSTURModel"]
 
 
-class LSTURModel:
-    """LSTUR model(Neural News Recommendation with Multi-Head Self-Attention)
+class LSTURDocVec(BaseModel):
+    """Modified LSTUR model(Neural News Recommendation with Multi-Head Self-Attention)
+    - Initiated with article-embeddings.
 
     Mingxiao An, Fangzhao Wu, Chuhan Wu, Kun Zhang, Zheng Liu and Xing Xie:
     Neural News Recommendation with Long- and Short-term User Representations, ACL 2019
-
-    Attributes:0
-        word2vec_embedding (numpy.ndarray): Pretrained word embedding matrix.
-        hparam (object): Global hyper-parameters.
     """
 
     def __init__(
         self,
-        hparams: dict,
-        word2vec_embedding: np.ndarray = None,
-        word_emb_dim: int = 300,
-        vocab_size: int = 32000,
-        seed: int = None,
+        hparams,
+        seed=None,
     ):
-        """Initialization steps for LSTUR."""
         self.hparams = hparams
         self.seed = seed
 
         # SET SEED:
         tf.random.set_seed(seed)
         np.random.seed(seed)
-
-        # INIT THE WORD-EMBEDDINGS:
-        if word2vec_embedding is None:
-            # Xavier Initialization
-            initializer = GlorotUniform(seed=self.seed)
-            self.word2vec_embedding = initializer(shape=(vocab_size, word_emb_dim))
-        else:
-            self.word2vec_embedding = word2vec_embedding
 
         # BUILD AND COMPILE MODEL:
         self.model, self.scorer = self._build_graph()
@@ -103,7 +87,7 @@ class LSTURModel:
         """
 
         his_input_title = keras.Input(
-            shape=(self.hparams.history_size, self.hparams.title_size), dtype="int32"
+            shape=(self.hparams.history_size, self.hparams.title_size), dtype="float32"
         )
         user_indexes = keras.Input(shape=(1,), dtype="int32")
 
@@ -149,7 +133,7 @@ class LSTURModel:
         )
         return model
 
-    def _build_newsencoder(self, embedding_layer):
+    def _build_newsencoder(self, units_per_layer: list[int] = list[512, 512, 512]):
         """The main function to create news encoder of LSTUR.
 
         Args:
@@ -158,26 +142,42 @@ class LSTURModel:
         Return:
             object: the news encoder of LSTUR.
         """
-
+        # LSTUR
         sequences_input_title = keras.Input(
-            shape=(self.hparams.title_size,), dtype="int32"
+            shape=(self.hparams.title_size), dtype="float32"
         )
-        embedded_sequences_title = embedding_layer(sequences_input_title)
+        x = sequences_input_title
 
-        y = layers.Dropout(self.hparams.dropout)(embedded_sequences_title)
-        y = layers.Conv1D(
-            self.hparams.filter_num,
-            self.hparams.window_size,
-            activation=self.hparams.cnn_activation,
-            padding="same",
-            bias_initializer=keras.initializers.Zeros(),
-            kernel_initializer=keras.initializers.glorot_uniform(seed=self.seed),
-        )(y)
-        y = layers.Dropout(self.hparams.dropout)(y)
-        y = layers.Masking()(
-            OverwriteMasking()([y, ComputeMasking()(sequences_input_title)])
-        )
-        pred_title = AttLayer2(self.hparams.attention_hidden_dim, seed=self.seed)(y)
+        # Create configurable Dense layers:
+        for layer in units_per_layer:
+            x = tf.keras.layers.Dense(
+                units=layer,
+                activation="relu",
+                kernel_regularizer=tf.keras.regularizers.l2(
+                    self.hparams.newsencoder_l2_regularization
+                ),
+            )(x)
+            x = tf.keras.layers.BatchNormalization()(x)
+            x = tf.keras.layers.Dropout(self.hparams.dropout)(x)
+
+        # # Classic LSTUR:
+        # x = layers.Conv1D(
+        #     self.hparams.filter_num,
+        #     self.hparams.window_size,
+        #     activation=self.hparams.cnn_activation,
+        #     padding="same",
+        #     bias_initializer=keras.initializers.Zeros(),
+        #     kernel_initializer=keras.initializers.glorot_uniform(seed=self.seed),
+        # )(x)
+        # x = layers.Dropout(self.hparams.dropout)(x)
+        # x = layers.Masking()(
+        #     OverwriteMasking()([x, ComputeMasking()(sequences_input_title)])
+        # )
+        # pred_title = AttLayer2(self.hparams.gru_unit, seed=self.seed)(x)
+
+        pred_title = tf.keras.layers.Dense(
+            units=self.hparams.gru_unit, activation="relu"
+        )(x)
 
         model = keras.Model(sequences_input_title, pred_title, name="news_encoder")
         return model
@@ -192,33 +192,27 @@ class LSTURModel:
         """
 
         his_input_title = keras.Input(
-            shape=(self.hparams.history_size, self.hparams.title_size), dtype="int32"
+            shape=(self.hparams.history_size, self.hparams.title_size), dtype="float32"
         )
         pred_input_title = keras.Input(
-            # shape=(hparams.npratio + 1, hparams.title_size), dtype="int32"
             shape=(None, self.hparams.title_size),
-            dtype="int32",
+            dtype="float32",
         )
         pred_input_title_one = keras.Input(
             shape=(
                 1,
                 self.hparams.title_size,
             ),
-            dtype="int32",
+            dtype="float32",
         )
         pred_title_reshape = layers.Reshape((self.hparams.title_size,))(
             pred_input_title_one
         )
         user_indexes = keras.Input(shape=(1,), dtype="int32")
 
-        embedding_layer = layers.Embedding(
-            self.word2vec_embedding.shape[0],
-            self.word2vec_embedding.shape[1],
-            weights=[self.word2vec_embedding],
-            trainable=True,
+        titleencoder = self._build_newsencoder(
+            units_per_layer=self.hparams.newsencoder_units_per_layer
         )
-
-        titleencoder = self._build_newsencoder(embedding_layer)
         self.userencoder = self._build_userencoder(titleencoder, type=self.hparams.type)
         self.newsencoder = titleencoder
 

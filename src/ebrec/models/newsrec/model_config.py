@@ -61,6 +61,28 @@ class hparams_lstur:
     learning_rate: float = 1e-4
 
 
+class hparams_lstur_docvec:
+    # INPUT DIMENTIONS:
+    title_size: int = DEFAULT_DOCUMENT_SIZE
+    history_size: int = 20
+    n_users: int = 50000
+    # MODEL ARCHITECTURE
+    type: str = "ini"
+    gru_unit: int = 400
+    #
+    # cnn_activation: str = "relu"
+    # attention_hidden_dim: int = 200
+    # filter_num: int = 400
+    # window_size: int = 3
+    # MODEL OPTIMIZER:
+    optimizer: str = "adam"
+    loss: str = "cross_entropy_loss"
+    dropout: float = 0.2
+    learning_rate: float = 1e-4
+    newsencoder_units_per_layer: list[int] = [512, 512, 512]
+    newsencoder_l2_regularization: float = 1e-4
+
+
 class hparams_npa:
     # INPUT DIMENTIONS:
     title_size: int = DEFAULT_TITLE_SIZE

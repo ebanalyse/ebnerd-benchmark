@@ -41,7 +41,6 @@ class NRMSModel:
             # Xavier Initialization
             initializer = GlorotUniform(seed=self.seed)
             self.word2vec_embedding = initializer(shape=(vocab_size, word_emb_dim))
-            # self.word2vec_embedding = np.random.rand(vocab_size, word_emb_dim)
         else:
             self.word2vec_embedding = word2vec_embedding
 

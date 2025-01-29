@@ -4,6 +4,11 @@ import tensorflow as tf
 import numpy as np
 import abc
 
+
+from tensorflow.keras.layers import Embedding, Input, Dropout, Dense, BatchNormalization
+from tensorflow.keras.initializers import GlorotUniform
+from tensorflow.keras.regularizers import l2
+
 __all__ = ["BaseModel"]
 
 

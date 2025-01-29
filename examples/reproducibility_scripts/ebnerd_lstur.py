@@ -78,7 +78,7 @@ TEXT_COLUMNS_TO_USE = [DEFAULT_TITLE_COL, DEFAULT_SUBTITLE_COL, DEFAULT_BODY_COL
 
 TRANSFORMER_MODEL_NAME = args.transformer_model_name
 hparams.cnn_activation = args.cnn_activation
-MAX_TITLE_LENGTH = args.max_title_length
+MAX_TITLE_LENGTH = args.title_size
 hparams.title_size = MAX_TITLE_LENGTH
 hparams.history_size = args.history_size
 hparams.window_size = args.window_size

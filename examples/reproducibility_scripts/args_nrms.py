@@ -8,7 +8,6 @@ def get_args():
     )
     # Add shared arguments
     parser = add_shared_args(parser)
-
     # =====================================================================================
     #  ############################# UNIQUE FOR NRMSModel ###############################
     # =====================================================================================
@@ -20,7 +19,6 @@ def get_args():
         choices=["NRMSDataLoaderPretransform", "NRMSDataLoader"],
         help="Data loader type (speed or memory efficient)",
     )
-
     # Transformer settings
     parser.add_argument(
         "--transformer_model_name",
@@ -29,12 +27,11 @@ def get_args():
         help="Transformer model name",
     )
     parser.add_argument(
-        "--max_title_length",
+        "--title_size",
         type=int,
         default=30,
         help="Maximum length of title encoding",
     )
-
     # Hyperparameters
     parser.add_argument(
         "--head_num", type=int, default=20, help="Number of attention heads"
@@ -48,5 +45,4 @@ def get_args():
         default=200,
         help="Dimension of attention hidden layers",
     )
-
     return parser.parse_args()

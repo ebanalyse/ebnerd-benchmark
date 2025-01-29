@@ -14,21 +14,20 @@ def get_args():
     parser.add_argument(
         "--model",
         type=str,
-        default="LSTURModel",
-        help="'NPAModel' and 'LSTURModel' the functionality. Hence, this should always be 'LSTURModel'",
+        default="LSTURDocVec",
+        help="'NPADocVec' and 'LSTURDocVec' the functionality. Hence, this should always be 'LSTURDocVec'",
     )
-    # Transformer settings
     parser.add_argument(
-        "--transformer_model_name",
+        "--document_embeddings",
         type=str,
-        default="FacebookAI/xlm-roberta-large",
-        help="Transformer model name",
+        default="Ekstra_Bladet_contrastive_vector/contrastive_vector.parquet",
+        help="Path to the document embeddings file",
     )
     # Model and loader settings
     parser.add_argument(
         "--title_size",
         type=int,
-        default=30,
+        default=768,
         help="Maximum length of title encoding",
     )
     parser.add_argument(
@@ -39,22 +38,10 @@ def get_args():
     )
     # MODEL ARCHITECTURE
     parser.add_argument(
-        "--cnn_activation",
-        type=str,
-        default="relu",
-        help="Activation function in the CNN.",
-    )
-    parser.add_argument(
         "--type",
         type=str,
         default="ini",
         help="Either 'ini' or 'con'. Whether to initiate or concat with user embedding.",
-    )
-    parser.add_argument(
-        "--attention_hidden_dim",
-        type=int,
-        default=200,
-        help="Attention hidden dim.",
     )
     parser.add_argument(
         "--gru_unit",
@@ -63,15 +50,40 @@ def get_args():
         help="GRU hidden dim.",
     )
     parser.add_argument(
-        "--filter_num",
+        "--newsencoder_units_per_layer",
+        nargs="+",
         type=int,
-        default=400,
-        help="",
+        default=[512, 512, 512],
+        help="List of units per layer in the news encoder",
     )
     parser.add_argument(
-        "--window_size",
-        type=int,
-        default=3,
-        help="",
+        "--newsencoder_l2_regularization",
+        type=float,
+        default=1e-4,
+        help="L2 regularization for the news encoder",
     )
+    # parser.add_argument(
+    #     "--attention_hidden_dim",
+    #     type=int,
+    #     default=200,
+    #     help="Attention hidden dim.",
+    # )
+    # parser.add_argument(
+    #     "--filter_num",
+    #     type=int,
+    #     default=400,
+    #     help="",
+    # )
+    # parser.add_argument(
+    #     "--window_size",
+    #     type=int,
+    #     default=3,
+    #     help="",
+    # )
+    # parser.add_argument(
+    #     "--cnn_activation",
+    #     type=str,
+    #     default="relu",
+    #     help="Activation function in the CNN.",
+    # )
     return parser.parse_args()

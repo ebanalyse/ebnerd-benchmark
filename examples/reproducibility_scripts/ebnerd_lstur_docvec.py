@@ -22,26 +22,27 @@ from ebrec.utils._behaviors import (
 from ebrec.evaluation import MetricEvaluator, AucScore, NdcgScore, MrrScore
 
 from ebrec.utils._python import (
-    write_submission_file,
     rank_predictions_by_score,
+    write_submission_file,
+    create_lookup_dict,
     write_json_file,
 )
 from ebrec.utils._articles import create_article_id_to_value_mapping
 from ebrec.utils._polars import split_df_chunks, concat_str_columns
 
-from ebrec.models.newsrec.dataloader import NRMSDataLoader, NRMSDataLoaderPretransform
+from ebrec.models.newsrec.dataloader import LSTURDataLoader
 from ebrec.models.newsrec.model_config import (
-    hparams_nrms,
-    hparams_nrms_docvec,
+    hparams_lstur_docvec,
+    hparams_npa,
     hparams_to_dict,
     print_hparams,
 )
-from ebrec.models.newsrec.nrms_docvec import NRMSDocVec
-from ebrec.models.newsrec import NRMSModel
+from ebrec.models.newsrec.lstur_docvec import LSTURDocVec
+from ebrec.models.newsrec.npa import NPAModel
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-from args_nrms import get_args
+from args_lstur_docvec import get_args
 
 args = get_args()
 
@@ -63,58 +64,47 @@ EPOCHS = args.epochs
 TRAIN_FRACTION = args.train_fraction if not DEBUG else 0.0001
 FRACTION_TEST = args.fraction_test if not DEBUG else 0.0001
 
-NRMSLoader_training = (
-    NRMSDataLoaderPretransform
-    if args.nrms_loader == "NRMSDataLoaderPretransform"
-    else NRMSDataLoader
-)
 
 # =====================================================================================
-#  ############################# UNIQUE FOR NRMSModel ################################
+#  ############################# UNIQUE FOR LSTURModel ################################
 # =====================================================================================
 
 # Model in use:
-model_func = NRMSModel
-hparams = hparams_nrms
+model_func = LSTURDocVec if args.model == "LSTURDocVec" else NPAModel
+hparams = hparams_lstur_docvec if model_func.__name__ == "LSTURDocVec" else hparams_npa
 
-## NRMSModel:
+## LSTURModel:
 TEXT_COLUMNS_TO_USE = [DEFAULT_TITLE_COL, DEFAULT_SUBTITLE_COL, DEFAULT_BODY_COL]
 
-TRANSFORMER_MODEL_NAME = args.transformer_model_name
 MAX_TITLE_LENGTH = args.title_size
 hparams.title_size = MAX_TITLE_LENGTH
 hparams.history_size = args.history_size
-hparams.head_num = args.head_num
-hparams.head_dim = args.head_dim
-hparams.attention_hidden_dim = args.attention_hidden_dim
-hparams.optimizer = args.optimizer
-hparams.loss = args.loss
-hparams.dropout = args.dropout
-hparams.learning_rate = args.learning_rate
+# hparams.attention_hidden_dim = args.attention_hidden_dim
+# hparams.cnn_activation = args.cnn_activation
+# hparams.window_size = args.window_size
+# hparams.filter_num = args.filter_num
+hparams.type = args.type
+hparams.gru_unit = args.gru_unit
+hparams.newsencoder_units_per_layer = args.newsencoder_units_per_layer
+hparams.newsencoder_l2_regularization = args.newsencoder_l2_regularization
 
-#
-hparams.newsencoder_units_per_layer = None  # [400, 400, 400]
+# Optimizer:
+hparams.learning_rate = args.learning_rate
+hparams.optimizer = args.optimizer
+hparams.dropout = args.dropout
+hparams.loss = args.loss
 
 # =============
+# Data-path
+DOC_VEC_PATH = PATH.joinpath(f"artifacts/{args.document_embeddings}")
 print("Initiating articles...")
-df_articles = pl.read_parquet(PATH.joinpath("articles.parquet"))
-
-# LOAD HUGGINGFACE:
-transformer_model = AutoModel.from_pretrained(TRANSFORMER_MODEL_NAME)
-transformer_tokenizer = AutoTokenizer.from_pretrained(TRANSFORMER_MODEL_NAME)
-
-word2vec_embedding = get_transformers_word_embeddings(transformer_model)
-#
-df_articles, cat_cal = concat_str_columns(df_articles, columns=TEXT_COLUMNS_TO_USE)
-df_articles, token_col_title = convert_text2encoding_with_transformers(
-    df_articles, transformer_tokenizer, cat_cal, max_length=MAX_TITLE_LENGTH
-)
+df_articles = pl.read_parquet(DOC_VEC_PATH)
 article_mapping = create_article_id_to_value_mapping(
-    df=df_articles, value_col=token_col_title
+    df=df_articles, value_col=df_articles.columns[-1]
 )
 
 # =====================================================================================
-#  ############################# UNIQUE FOR NRMSDocVec ###############################
+#  ############################# UNIQUE FOR LSTURModel ###############################
 # =====================================================================================
 
 print_hparams(hparams)
@@ -187,20 +177,31 @@ last_dt = df[DEFAULT_IMPRESSION_TIMESTAMP_COL].dt.date().max() - dt.timedelta(da
 df_train = df.filter(pl.col(DEFAULT_IMPRESSION_TIMESTAMP_COL).dt.date() < last_dt)
 df_validation = df.filter(pl.col(DEFAULT_IMPRESSION_TIMESTAMP_COL).dt.date() >= last_dt)
 
+user_id_mapping = create_lookup_dict(
+    df_train.select(DEFAULT_USER_COL)
+    .unique()
+    .with_row_index(name="id", offset=1)[: args.n_users],
+    key=DEFAULT_USER_COL,
+    value="id",
+)
+hparams.n_users = len(user_id_mapping)
+
 # =====================================================================================
 print(f"Initiating training-dataloader")
-train_dataloader = NRMSLoader_training(
+train_dataloader = LSTURDataLoader(
     behaviors=df_train,
     article_dict=article_mapping,
+    user_id_mapping=user_id_mapping,
     unknown_representation="zeros",
     history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
     eval_mode=False,
     batch_size=BS_TRAIN,
 )
 
-val_dataloader = NRMSLoader_training(
+val_dataloader = LSTURDataLoader(
     behaviors=df_validation,
     article_dict=article_mapping,
+    user_id_mapping=user_id_mapping,
     unknown_representation="zeros",
     history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
     eval_mode=False,
@@ -290,9 +291,10 @@ print("Initiating testset without beyond-accuracy...")
 for i, df_test_chunk in enumerate(df_test_chunks[CHUNKS_DONE:], start=1 + CHUNKS_DONE):
     print(f"Test chunk: {i}/{len(df_test_chunks)}")
     # Initialize DataLoader
-    test_dataloader_wo_b = NRMSDataLoader(
+    test_dataloader_wo_b = LSTURDataLoader(
         behaviors=df_test_chunk,
         article_dict=article_mapping,
+        user_id_mapping=user_id_mapping,
         unknown_representation="zeros",
         history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
         eval_mode=True,
@@ -327,9 +329,10 @@ df_pred_test_wo_beyond.select(DEFAULT_IMPRESSION_ID_COL, "ranked_scores").write_
 )
 # =====================================================================================
 print("Initiating testset with beyond-accuracy...")
-test_dataloader_w_b = NRMSDataLoader(
+test_dataloader_w_b = LSTURDataLoader(
     behaviors=df_test_w_beyond,
     article_dict=article_mapping,
+    user_id_mapping=user_id_mapping,
     unknown_representation="zeros",
     history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
     eval_mode=True,

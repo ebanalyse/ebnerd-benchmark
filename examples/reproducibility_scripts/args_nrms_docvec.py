@@ -8,11 +8,9 @@ def get_args():
     )
     # Add shared arguments
     parser = add_shared_args(parser)
-
     # =====================================================================================
     #  ############################# UNIQUE FOR NRMSDocVec ###############################
     # =====================================================================================
-
     # Model and loader settings
     parser.add_argument(
         "--nrms_loader",
@@ -21,7 +19,6 @@ def get_args():
         choices=["NRMSDataLoaderPretransform", "NRMSDataLoader"],
         help="Data loader type (speed or memory efficient)",
     )
-
     parser.add_argument(
         "--document_embeddings",
         type=str,
@@ -51,12 +48,10 @@ def get_args():
         default=[512, 512, 512],
         help="List of units per layer in the news encoder",
     )
-
     parser.add_argument(
         "--newsencoder_l2_regularization",
         type=float,
         default=1e-4,
         help="L2 regularization for the news encoder",
     )
-
     return parser.parse_args()

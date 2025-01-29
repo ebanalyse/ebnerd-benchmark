@@ -339,6 +339,7 @@ print("Initiating testset with beyond-accuracy...")
 test_dataloader_w_b = LSTURDataLoader(
     behaviors=df_test_w_beyond,
     article_dict=article_mapping,
+    user_id_mapping=user_id_mapping,
     unknown_representation="zeros",
     history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
     eval_mode=True,

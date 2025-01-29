@@ -139,7 +139,7 @@ class LSTURModel(BaseModel):
             OverwriteMasking()([y, ComputeMasking()(sequences_input_title)])
         )
         pred_title = AttLayer2(self.hparams.attention_hidden_dim, seed=self.seed)(y)
-        print(pred_title)
+
         model = keras.Model(sequences_input_title, pred_title, name="news_encoder")
         return model
 

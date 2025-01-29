@@ -58,10 +58,10 @@ To help you get started, we have created a few notebooks. These are somewhat sim
 The notebooks were made on macOS, and you might need to perform small modifications to have them running on your system.
 
 ## Model training
-We have created a [notebook](https://github.com/ebanalyse/ebnerd-benchmark/blob/main/examples/00_quick_start/nrms_ebnerd.ipynb) where we train NRMS on EB-NeRD - this is a very simple version using the demo dataset.
+We have created a [notebook](https://github.com/ebanalyse/ebnerd-benchmark/blob/main/examples/quick_start/nrms_ebnerd.ipynb) where we train NRMS on EB-NeRD - this is a very simple version using the demo dataset.
 
 ## Data manipulation and enrichment
-In the [dataset_ebnerd](https://github.com/ebanalyse/ebnerd-benchmark/blob/main/examples/00_quick_start/dataset_ebnerd.ipynb) demo, we show how one can join histories and create binary labels.
+In the [dataset_ebnerd](https://github.com/ebanalyse/ebnerd-benchmark/blob/main/examples/quick_start/dataset_ebnerd.ipynb) demo, we show how one can join histories and create binary labels.
 
 # Reproduce EB-NeRD Experiments
 

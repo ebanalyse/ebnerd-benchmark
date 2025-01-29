@@ -10,16 +10,9 @@ def get_args():
     parser = add_shared_args(parser)
 
     # =====================================================================================
-    #  ############################# UNIQUE FOR NRMSModel ###############################
+    #  ############################# UNIQUE FOR LSTUR ###############################
     # =====================================================================================
     # Model and loader settings
-    parser.add_argument(
-        "--nrms_loader",
-        type=str,
-        default="NRMSDataLoaderPretransform",
-        choices=["NRMSDataLoaderPretransform", "NRMSDataLoader"],
-        help="Data loader type (speed or memory efficient)",
-    )
 
     # Transformer settings
     parser.add_argument(

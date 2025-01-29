@@ -8,18 +8,7 @@ import numpy as np
 import gc
 import os
 
-from ebrec.utils._constants import (
-    DEFAULT_HISTORY_ARTICLE_ID_COL,
-    DEFAULT_IS_BEYOND_ACCURACY_COL,
-    DEFAULT_CLICKED_ARTICLES_COL,
-    DEFAULT_INVIEW_ARTICLES_COL,
-    DEFAULT_IMPRESSION_ID_COL,
-    DEFAULT_SUBTITLE_COL,
-    DEFAULT_LABELS_COL,
-    DEFAULT_TITLE_COL,
-    DEFAULT_USER_COL,
-)
-
+from ebrec.utils._constants import *
 from ebrec.utils._behaviors import (
     create_binary_labels_column,
     sampling_strategy_wu2019,
@@ -37,11 +26,15 @@ from ebrec.utils._polars import (
 )
 from ebrec.utils._articles import create_article_id_to_value_mapping
 from ebrec.utils._nlp import get_transformers_word_embeddings
-from ebrec.utils._python import write_submission_file, rank_predictions_by_score
+from ebrec.utils._python import (
+    write_submission_file,
+    rank_predictions_by_score,
+    create_lookup_dict,
+)
 
-from ebrec.models.newsrec.dataloader import NRMSDataLoader, NRMSDataLoaderPretransform
-from ebrec.models.newsrec.model_config import hparams_nrms
-from ebrec.models.newsrec import NRMSModel
+from ebrec.models.newsrec.dataloader import LSTURDataLoader
+from ebrec.models.newsrec.model_config import hparams_lstur
+from ebrec.models.newsrec import LSTURModel
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 gpus = tf.config.experimental.list_physical_devices("GPU")
@@ -49,7 +42,7 @@ for gpu in gpus:
     tf.config.experimental.set_memory_growth(gpu, True)
 
 # conda activate ./venv/
-# python -i examples/quick_start/nrms_ebnerd.py
+# python -i examples/quick_start/lstur_ebnerd.py
 
 
 def ebnerd_from_path(path: Path, history_size: int = 30) -> pl.DataFrame:
@@ -85,8 +78,7 @@ DUMP_DIR = Path("ebnerd_predictions")
 DUMP_DIR.mkdir(exist_ok=True, parents=True)
 SEED = np.random.randint(0, 1_000)
 
-MODEL_NAME = f"NRMS-{dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}-{SEED}"
-# MODEL_NAME = "NRMS-382861963-2024-11-12 01:34:49.050070"
+MODEL_NAME = f"LSTUR-{dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}-{SEED}"
 
 MODEL_WEIGHTS = DUMP_DIR.joinpath(f"state_dict/{MODEL_NAME}/weights")
 LOG_DIR = DUMP_DIR.joinpath(f"runs/{MODEL_NAME}")
@@ -102,7 +94,7 @@ FRACTION = 1.0
 EPOCHS = 5
 FRACTION_TEST = 1.0
 #
-hparams_nrms.history_size = HISTORY_SIZE
+hparams_lstur.history_size = HISTORY_SIZE
 
 BATCH_SIZE_TRAIN = 32
 BATCH_SIZE_VAL = 32
@@ -161,18 +153,27 @@ article_mapping = create_article_id_to_value_mapping(
     df=df_articles, value_col=token_col_title
 )
 
+
+user_mapping = create_lookup_dict(
+    df_train.select(DEFAULT_USER_COL).unique().with_row_count(name="id", offset=1),
+    DEFAULT_USER_COL,
+    "id",
+)
+
 # =>
 print("Init train- and val-dataloader")
-train_dataloader = NRMSDataLoaderPretransform(
+train_dataloader = LSTURDataLoader(
     behaviors=df_train,
+    user_id_mapping=user_mapping,
     article_dict=article_mapping,
     unknown_representation="zeros",
     history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
     eval_mode=False,
     batch_size=BATCH_SIZE_TRAIN,
 )
-val_dataloader = NRMSDataLoaderPretransform(
+val_dataloader = LSTURDataLoader(
     behaviors=df_validation,
+    user_id_mapping=user_mapping,
     article_dict=article_mapping,
     unknown_representation="zeros",
     history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
@@ -187,8 +188,10 @@ modelcheckpoint = tf.keras.callbacks.ModelCheckpoint(
     filepath=MODEL_WEIGHTS, save_best_only=True, save_weights_only=True, verbose=1
 )
 
-model = NRMSModel(
-    hparams=hparams_nrms,
+hparams_lstur.n_users = len(user_mapping)
+
+model = LSTURModel(
+    hparams=hparams_lstur,
     word2vec_embedding=word2vec_embedding,
     seed=42,
 )
@@ -240,7 +243,7 @@ df_pred_test_wo_beyond = []
 for i, df_test_chunk in enumerate(df_test_chunks[CHUNKS_DONE:], start=1 + CHUNKS_DONE):
     print(f"Init test-dataloader: {i}/{len(df_test_chunks)}")
     # Initialize DataLoader
-    test_dataloader_wo_b = NRMSDataLoader(
+    test_dataloader_wo_b = LSTURDataLoader(
         behaviors=df_test_chunk,
         article_dict=article_mapping,
         unknown_representation="zeros",
@@ -278,9 +281,10 @@ df_pred_test_wo_beyond.select(DEFAULT_IMPRESSION_ID_COL, "ranked_scores").write_
 )
 
 print("Init test-dataloader: beyond-accuracy")
-test_dataloader_w_b = NRMSDataLoader(
+test_dataloader_w_b = LSTURDataLoader(
     behaviors=df_test_w_beyond,
     article_dict=article_mapping,
+    user_mapping=user_mapping,
     unknown_representation="zeros",
     history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
     eval_mode=True,

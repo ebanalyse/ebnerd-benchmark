@@ -4,7 +4,7 @@ import argparse
 
 def get_args():
     parser = argparse.ArgumentParser(
-        description="Argument parser for NRMSModel training"
+        description="Argument parser for NRMSDocVec training"
     )
     # Add shared arguments
     parser = add_shared_args(parser)
@@ -57,18 +57,6 @@ def get_args():
         type=float,
         default=1e-4,
         help="L2 regularization for the news encoder",
-    )
-
-    # Optimizer settings
-    parser.add_argument(
-        "--optimizer", type=str, default="adam", help="Optimizer to use"
-    )
-    parser.add_argument(
-        "--loss", type=str, default="cross_entropy_loss", help="Loss function"
-    )
-    parser.add_argument("--dropout", type=float, default=0.2, help="Dropout rate")
-    parser.add_argument(
-        "--learning_rate", type=float, default=1e-4, help="Learning rate"
     )
 
     return parser.parse_args()

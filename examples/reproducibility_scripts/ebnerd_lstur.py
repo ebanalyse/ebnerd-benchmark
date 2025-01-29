@@ -42,7 +42,7 @@ from ebrec.models.newsrec.npa import NPAModel
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-from args_nrms import get_args
+from args_lstur import get_args
 
 args = get_args()
 
@@ -73,23 +73,24 @@ FRACTION_TEST = args.fraction_test if not DEBUG else 0.0001
 model_func = LSTURModel if args.model == "LSTURModel" else NPAModel
 hparams = hparams_lstur if model_func.__name__ == "LSTURModel" else hparams_npa
 
-## NRMSModel:
+## LSTURModel:
 TEXT_COLUMNS_TO_USE = [DEFAULT_TITLE_COL, DEFAULT_SUBTITLE_COL, DEFAULT_BODY_COL]
 
 TRANSFORMER_MODEL_NAME = args.transformer_model_name
+hparams.cnn_activation = args.cnn_activation
 MAX_TITLE_LENGTH = args.max_title_length
 hparams.title_size = MAX_TITLE_LENGTH
 hparams.history_size = args.history_size
-hparams.head_num = args.head_num
-hparams.head_dim = args.head_dim
+hparams.window_size = args.window_size
+hparams.filter_num = args.filter_num
+hparams.type = args.type
+hparams.gru_unit = args.gru_unit
 hparams.attention_hidden_dim = args.attention_hidden_dim
-hparams.optimizer = args.optimizer
-hparams.loss = args.loss
-hparams.dropout = args.dropout
+# Optimizer:
 hparams.learning_rate = args.learning_rate
-
-#
-hparams.newsencoder_units_per_layer = None  # [400, 400, 400]
+hparams.optimizer = args.optimizer
+hparams.dropout = args.dropout
+hparams.loss = args.loss
 
 # =============
 print("Initiating articles...")
@@ -110,7 +111,7 @@ article_mapping = create_article_id_to_value_mapping(
 )
 
 # =====================================================================================
-#  ############################# UNIQUE FOR NRMSDocVec ###############################
+#  ############################# UNIQUE FOR LSTURModel ###############################
 # =====================================================================================
 
 print_hparams(hparams)
@@ -183,18 +184,21 @@ last_dt = df[DEFAULT_IMPRESSION_TIMESTAMP_COL].dt.date().max() - dt.timedelta(da
 df_train = df.filter(pl.col(DEFAULT_IMPRESSION_TIMESTAMP_COL).dt.date() < last_dt)
 df_validation = df.filter(pl.col(DEFAULT_IMPRESSION_TIMESTAMP_COL).dt.date() >= last_dt)
 
-user_mapping = create_lookup_dict(
-    df_train.select(DEFAULT_USER_COL).unique().with_row_count(name="id", offset=1),
-    DEFAULT_USER_COL,
-    "id",
+user_id_mapping = create_lookup_dict(
+    df_train.select(DEFAULT_USER_COL)
+    .unique()
+    .with_row_index(name="id", offset=1)[: args.n_users],
+    key=DEFAULT_USER_COL,
+    value="id",
 )
+hparams.n_users = len(user_id_mapping)
 
 # =====================================================================================
 print(f"Initiating training-dataloader")
 train_dataloader = LSTURDataLoader(
     behaviors=df_train,
     article_dict=article_mapping,
-    user_mapping=user_mapping,
+    user_id_mapping=user_id_mapping,
     unknown_representation="zeros",
     history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
     eval_mode=False,
@@ -204,7 +208,7 @@ train_dataloader = LSTURDataLoader(
 val_dataloader = LSTURDataLoader(
     behaviors=df_validation,
     article_dict=article_mapping,
-    user_mapping=user_mapping,
+    user_id_mapping=user_id_mapping,
     unknown_representation="zeros",
     history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
     eval_mode=False,
@@ -297,7 +301,7 @@ for i, df_test_chunk in enumerate(df_test_chunks[CHUNKS_DONE:], start=1 + CHUNKS
     test_dataloader_wo_b = LSTURDataLoader(
         behaviors=df_test_chunk,
         article_dict=article_mapping,
-        user_mapping=user_mapping,
+        user_id_mapping=user_id_mapping,
         unknown_representation="zeros",
         history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
         eval_mode=True,

@@ -4,7 +4,7 @@ import argparse
 
 def get_args():
     parser = argparse.ArgumentParser(
-        description="Argument parser for NRMSModel training"
+        description="Argument parser for LSTURModel training"
     )
     # Add shared arguments
     parser = add_shared_args(parser)
@@ -12,7 +12,12 @@ def get_args():
     # =====================================================================================
     #  ############################# UNIQUE FOR LSTUR ###############################
     # =====================================================================================
-    # Model and loader settings
+    parser.add_argument(
+        "--model",
+        type=str,
+        default="LSTURModel",
+        help="'NPAModel' and 'LSTURModel' the functionality. Hence, this should always be 'LSTURModel'",
+    )
 
     # Transformer settings
     parser.add_argument(
@@ -21,6 +26,8 @@ def get_args():
         default="FacebookAI/xlm-roberta-large",
         help="Transformer model name",
     )
+
+    # Model and loader settings
     parser.add_argument(
         "--max_title_length",
         type=int,
@@ -28,30 +35,53 @@ def get_args():
         help="Maximum length of title encoding",
     )
 
-    # Hyperparameters
     parser.add_argument(
-        "--head_num", type=int, default=20, help="Number of attention heads"
+        "--n_users",
+        type=int,
+        default=None,
+        help="The number of users in the lookup table. If 'None' use all users from the training-set.",
     )
+
+    # MODEL ARCHITECTURE
     parser.add_argument(
-        "--head_dim", type=int, default=20, help="Dimension of each attention head"
+        "--cnn_activation",
+        type=str,
+        default="relu",
+        help="Activation function in the CNN.",
     )
+
+    parser.add_argument(
+        "--type",
+        type=str,
+        default="ini",
+        help="Either 'ini' or 'con'. Whether to initiate or concat with user embedding.",
+    )
+
     parser.add_argument(
         "--attention_hidden_dim",
         type=int,
         default=200,
-        help="Dimension of attention hidden layers",
+        help="Attention hidden dim.",
     )
 
-    # Optimizer settings
     parser.add_argument(
-        "--optimizer", type=str, default="adam", help="Optimizer to use"
-    )
-    parser.add_argument(
-        "--loss", type=str, default="cross_entropy_loss", help="Loss function"
-    )
-    parser.add_argument("--dropout", type=float, default=0.2, help="Dropout rate")
-    parser.add_argument(
-        "--learning_rate", type=float, default=1e-4, help="Learning rate"
+        "--gru_unit",
+        type=int,
+        default=400,
+        help="GRU hidden dim.",
     )
 
+    parser.add_argument(
+        "--filter_num",
+        type=int,
+        default=400,
+        help="",
+    )
+
+    parser.add_argument(
+        "--window_size",
+        type=int,
+        default=3,
+        help="",
+    )
     return parser.parse_args()

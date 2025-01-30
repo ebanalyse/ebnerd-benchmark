@@ -4,20 +4,18 @@ import argparse
 
 def get_args():
     parser = argparse.ArgumentParser(
-        description="Argument parser for NRMSModel training"
+        description="Argument parser for LSTURModel training"
     )
     # Add shared arguments
     parser = add_shared_args(parser)
     # =====================================================================================
-    #  ############################# UNIQUE FOR NRMSModel ###############################
+    #  ############################# UNIQUE FOR LSTUR ###############################
     # =====================================================================================
-    # Model and loader settings
     parser.add_argument(
-        "--nrms_loader",
+        "--model",
         type=str,
-        default="NRMSDataLoaderPretransform",
-        choices=["NRMSDataLoaderPretransform", "NRMSDataLoader"],
-        help="Data loader type (speed or memory efficient)",
+        default="LSTURModel",
+        help="'NPAModel' and 'LSTURModel' the functionality. Hence, this should always be 'LSTURModel'",
     )
     # Transformer settings
     parser.add_argument(
@@ -26,30 +24,48 @@ def get_args():
         default="FacebookAI/xlm-roberta-large",
         help="Transformer model name",
     )
+    # Model and loader settings
     parser.add_argument(
         "--title_size",
         type=int,
         default=30,
         help="Maximum length of title encoding",
     )
-    # Hyperparameters
     parser.add_argument(
-        "--head_num", type=int, default=20, help="Number of attention heads"
+        "--n_users",
+        type=int,
+        default=None,
+        help="The number of users in the lookup table. If 'None' use all users from the training-set.",
     )
+    # MODEL ARCHITECTURE
     parser.add_argument(
-        "--head_dim", type=int, default=20, help="Dimension of each attention head"
+        "--cnn_activation",
+        type=str,
+        default="relu",
+        help="Activation function in the CNN.",
     )
     parser.add_argument(
         "--attention_hidden_dim",
         type=int,
         default=200,
-        help="Dimension of attention hidden layers",
+        help="Attention hidden dim.",
     )
     parser.add_argument(
-        "--newsencoder_units_per_layer",
-        nargs="+",
+        "--user_emb_dim",
         type=int,
-        default=None,
-        help="List of units per layer in the news encoder",
+        default=400,
+        help="Dimension of user hidden dim.",
+    )
+    parser.add_argument(
+        "--filter_num",
+        type=int,
+        default=400,
+        help="",
+    )
+    parser.add_argument(
+        "--window_size",
+        type=int,
+        default=3,
+        help="",
     )
     return parser.parse_args()

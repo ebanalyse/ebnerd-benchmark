@@ -42,9 +42,11 @@ from ebrec.models.newsrec.npa import NPAModel
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-from args_lstur import get_args
+from args_lstur import get_args as get_args_lstur
+from args_npa import get_args as get_args_npa
 
-args = get_args()
+args = get_args_lstur()
+args = get_args_lstur() if args.model == "LSTURModel" else get_args_npa()
 
 for arg, val in vars(args).items():
     print(f"{arg} : {val}")
@@ -76,21 +78,15 @@ hparams = hparams_lstur if model_func.__name__ == "LSTURModel" else hparams_npa
 ## LSTURModel:
 TEXT_COLUMNS_TO_USE = [DEFAULT_TITLE_COL, DEFAULT_SUBTITLE_COL, DEFAULT_BODY_COL]
 
+for key, value in vars(args).items():
+    if hasattr(hparams, key):
+        setattr(hparams, key, value)
+
+
+# Handle special cases separately
 TRANSFORMER_MODEL_NAME = args.transformer_model_name
-hparams.cnn_activation = args.cnn_activation
 MAX_TITLE_LENGTH = args.title_size
 hparams.title_size = MAX_TITLE_LENGTH
-hparams.history_size = args.history_size
-hparams.window_size = args.window_size
-hparams.filter_num = args.filter_num
-hparams.type = args.type
-hparams.gru_unit = args.gru_unit
-hparams.attention_hidden_dim = args.attention_hidden_dim
-# Optimizer:
-hparams.learning_rate = args.learning_rate
-hparams.optimizer = args.optimizer
-hparams.dropout = args.dropout
-hparams.loss = args.loss
 
 # =============
 print("Initiating articles...")

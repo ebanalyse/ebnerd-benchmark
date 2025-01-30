@@ -148,7 +148,6 @@ class NPAModel(BaseModel):
             seed=self.seed,
         )([y, layers.Dense(self.hparams.attention_hidden_dim)(u_emb)])
 
-        # pred_title = Reshape((1, feature_size))(pred_title)
         model = keras.Model(sequence_title_uindex, pred_title, name="news_encoder")
         return model
 

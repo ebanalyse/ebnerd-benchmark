@@ -5,6 +5,7 @@ from ebrec.models.newsrec.base_model import BaseModel
 from tensorflow.keras import layers
 import tensorflow.keras as keras
 
+from tensorflow.keras.initializers import GlorotUniform
 import tensorflow as tf
 import numpy as np
 

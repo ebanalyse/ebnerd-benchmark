@@ -1,4 +1,3 @@
-# TODO make a notebook with it
 from ebrec.models.newsrec.model_config import hparams_npa
 from ebrec.models.newsrec.npa import NPAModel
 import numpy as np

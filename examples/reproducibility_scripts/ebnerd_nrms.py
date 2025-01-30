@@ -80,20 +80,14 @@ hparams = hparams_nrms
 ## NRMSModel:
 TEXT_COLUMNS_TO_USE = [DEFAULT_TITLE_COL, DEFAULT_SUBTITLE_COL, DEFAULT_BODY_COL]
 
+for key, value in vars(args).items():
+    if hasattr(hparams, key):
+        setattr(hparams, key, value)
+
+# Handle special cases separately
 TRANSFORMER_MODEL_NAME = args.transformer_model_name
 MAX_TITLE_LENGTH = args.title_size
 hparams.title_size = MAX_TITLE_LENGTH
-hparams.history_size = args.history_size
-hparams.head_num = args.head_num
-hparams.head_dim = args.head_dim
-hparams.attention_hidden_dim = args.attention_hidden_dim
-hparams.optimizer = args.optimizer
-hparams.loss = args.loss
-hparams.dropout = args.dropout
-hparams.learning_rate = args.learning_rate
-
-#
-hparams.newsencoder_units_per_layer = None  # [400, 400, 400]
 
 # =============
 print("Initiating articles...")

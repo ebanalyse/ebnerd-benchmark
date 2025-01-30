@@ -77,17 +77,9 @@ NRMSLoader_training = (
 model_func = NRMSDocVec
 hparams = hparams_nrms_docvec
 #
-hparams.title_size = args.title_size
-hparams.history_size = args.history_size
-hparams.head_num = args.head_num
-hparams.head_dim = args.head_dim
-hparams.attention_hidden_dim = args.attention_hidden_dim
-hparams.newsencoder_units_per_layer = args.newsencoder_units_per_layer
-hparams.optimizer = args.optimizer
-hparams.loss = args.loss
-hparams.dropout = args.dropout
-hparams.learning_rate = args.learning_rate
-hparams.newsencoder_l2_regularization = args.newsencoder_l2_regularization
+for key, value in vars(args).items():
+    if hasattr(hparams, key):
+        setattr(hparams, key, value)
 
 
 # =============

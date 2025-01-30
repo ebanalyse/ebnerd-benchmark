@@ -73,26 +73,17 @@ FRACTION_TEST = args.fraction_test if not DEBUG else 0.0001
 model_func = LSTURDocVec if args.model == "LSTURDocVec" else NPAModel
 hparams = hparams_lstur_docvec if model_func.__name__ == "LSTURDocVec" else hparams_npa
 
-## LSTURModel:
-TEXT_COLUMNS_TO_USE = [DEFAULT_TITLE_COL, DEFAULT_SUBTITLE_COL, DEFAULT_BODY_COL]
+for key, value in vars(args).items():
+    if hasattr(hparams, key):
+        setattr(hparams, key, value)
 
+# Handle special cases separately
+TRANSFORMER_MODEL_NAME = args.transformer_model_name
 MAX_TITLE_LENGTH = args.title_size
 hparams.title_size = MAX_TITLE_LENGTH
-hparams.history_size = args.history_size
-# hparams.attention_hidden_dim = args.attention_hidden_dim
-# hparams.cnn_activation = args.cnn_activation
-# hparams.window_size = args.window_size
-# hparams.filter_num = args.filter_num
-hparams.type = args.type
-hparams.gru_unit = args.gru_unit
-hparams.newsencoder_units_per_layer = args.newsencoder_units_per_layer
-hparams.newsencoder_l2_regularization = args.newsencoder_l2_regularization
 
-# Optimizer:
-hparams.learning_rate = args.learning_rate
-hparams.optimizer = args.optimizer
-hparams.dropout = args.dropout
-hparams.loss = args.loss
+## LSTURModel:
+TEXT_COLUMNS_TO_USE = [DEFAULT_TITLE_COL, DEFAULT_SUBTITLE_COL, DEFAULT_BODY_COL]
 
 # =============
 # Data-path

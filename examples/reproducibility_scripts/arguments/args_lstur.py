@@ -1,4 +1,4 @@
-from arguments.arguments.args_shared import add_shared_args
+from arguments.args_shared import add_shared_args
 import argparse
 
 

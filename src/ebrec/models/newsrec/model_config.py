@@ -79,7 +79,7 @@ class hparams_lstur_docvec:
     loss: str = "cross_entropy_loss"
     dropout: float = 0.2
     learning_rate: float = 1e-4
-    newsencoder_units_per_layer: list[int] = [512, 512, 512]
+    newsencoder_units_per_layer: list[int] = [64, 64, 64]
     newsencoder_l2_regularization: float = 1e-4
 
 
@@ -99,6 +99,27 @@ class hparams_npa:
     loss: str = "cross_entropy_loss"
     dropout: float = 0.2
     learning_rate: float = 1e-4
+
+
+class hparams_npa_docvec:
+    # INPUT DIMENTIONS:
+    title_size: int = DEFAULT_TITLE_SIZE
+    history_size: int = 20
+    n_users: int = 50000
+    # MODEL ARCHITECTURE
+    attention_hidden_dim: int = 200
+    user_emb_dim: int = 400
+    filter_num: int = 400
+    # cnn_activation: str = "relu"
+    # window_size: int = 3
+    # MODEL OPTIMIZER:
+    optimizer: str = "adam"
+    loss: str = "cross_entropy_loss"
+    dropout: float = 0.2
+    learning_rate: float = 1e-4
+    # MY OWN LITTLE TWIST:
+    newsencoder_units_per_layer: list[int] = [64, 64, 64]
+    newsencoder_l2_regularization: float = 1e-4
 
 
 class hparams_nrms:
@@ -132,5 +153,5 @@ class hparams_nrms_docvec:
     loss: str = "cross_entropy_loss"
     dropout: float = 0.2
     learning_rate: float = 1e-4
-    newsencoder_units_per_layer: list[int] = [512, 512, 512]
+    newsencoder_units_per_layer: list[int] = [64, 64, 64]
     newsencoder_l2_regularization: float = 1e-4

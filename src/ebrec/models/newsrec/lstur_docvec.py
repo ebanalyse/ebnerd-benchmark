@@ -133,7 +133,7 @@ class LSTURDocVec(BaseModel):
         )
         return model
 
-    def _build_newsencoder(self, units_per_layer: list[int] = list[512, 512, 512]):
+    def _build_newsencoder(self, units_per_layer: list[int] = list[64, 64, 64]):
         """The main function to create news encoder of LSTUR.
 
         Args:
@@ -208,7 +208,7 @@ class LSTURDocVec(BaseModel):
         pred_title_reshape = layers.Reshape((self.hparams.title_size,))(
             pred_input_title_one
         )
-        user_indexes = keras.Input(shape=(1,), dtype="int32")
+        user_indexes = keras.Input(shape=(1,), dtype="float32")
 
         titleencoder = self._build_newsencoder(
             units_per_layer=self.hparams.newsencoder_units_per_layer

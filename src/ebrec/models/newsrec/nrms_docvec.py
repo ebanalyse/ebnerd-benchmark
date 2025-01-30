@@ -96,7 +96,7 @@ class NRMSDocVec:
         model = tf.keras.Model(his_input_title, user_present, name="user_encoder")
         return model
 
-    def _build_newsencoder(self, units_per_layer: list[int] = list[512, 512, 512]):
+    def _build_newsencoder(self, units_per_layer: list[int] = list[64, 64, 64]):
         """THIS IS OUR IMPLEMENTATION.
         The main function to create a news encoder.
 

@@ -1,5 +1,6 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License.
+from tensorflow.keras.initializers import GlorotUniform
 from tensorflow.keras import layers
 import tensorflow.keras as keras
 import tensorflow as tf
@@ -8,10 +9,11 @@ import numpy as np
 from ebrec.models.newsrec.layers import PersonalizedAttentivePooling
 from ebrec.models.newsrec.base_model import BaseModel
 
+
 __all__ = ["NPAModel"]
 
 
-class NPAModel(BaseModel):
+class NPAModel:
     """NPA model(Neural News Recommendation with Attentive Multi-View Learning)
 
     Attributes:
@@ -21,25 +23,62 @@ class NPAModel(BaseModel):
 
     def __init__(
         self,
-        hparams,
-        word2vec_embedding=None,
-        seed=None,
-        **kwargs,
+        hparams: dict,
+        word2vec_embedding: np.ndarray = None,
+        word_emb_dim: int = 300,
+        vocab_size: int = 32000,
+        seed: int = None,
     ):
-        """Initialization steps for MANL.
-        Compared with the BaseModel, NPA need word embedding.
-        After creating word embedding matrix, BaseModel's __init__ method will be called.
+        """Initialization steps for LSTUR."""
+        self.hparams = hparams
+        self.seed = seed
 
-        Args:
-            hparams (object): Global hyper-parameters. Some key setttings such as filter_num are there.
+        # SET SEED:
+        tf.random.set_seed(seed)
+        np.random.seed(seed)
+
+        # INIT THE WORD-EMBEDDINGS:
+        if word2vec_embedding is None:
+            # Xavier Initialization
+            initializer = GlorotUniform(seed=self.seed)
+            self.word2vec_embedding = initializer(shape=(vocab_size, word_emb_dim))
+        else:
+            self.word2vec_embedding = word2vec_embedding
+
+        # BUILD AND COMPILE MODEL:
+        self.model, self.scorer = self._build_graph()
+        data_loss = self._get_loss(self.hparams.loss)
+        train_optimizer = self._get_opt(
+            optimizer=self.hparams.optimizer, lr=self.hparams.learning_rate
+        )
+        self.model.compile(loss=data_loss, optimizer=train_optimizer)
+
+    def _get_loss(self, loss: str):
+        """Make loss function, consists of data loss and regularization loss
+
+        Returns:
+            object: Loss function or loss function name
+        """
+        if loss == "cross_entropy_loss":
+            data_loss = "categorical_crossentropy"
+        elif loss == "log_loss":
+            data_loss = "binary_crossentropy"
+        else:
+            raise ValueError(f"this loss not defined {loss}")
+        return data_loss
+
+    def _get_opt(self, optimizer: str, lr: float):
+        """Get the optimizer according to configuration. Usually we will use Adam.
+        Returns:
+            object: An optimizer.
         """
 
-        super().__init__(
-            hparams=hparams,
-            word2vec_embedding=word2vec_embedding,
-            seed=seed,
-            **kwargs,
-        )
+        if optimizer == "adam":
+            train_opt = keras.optimizers.Adam(learning_rate=lr)
+        else:
+            raise ValueError(f"this optimizer not defined {optimizer}")
+
+        return train_opt
 
     def _get_input_label_from_iter(self, batch_data):
         input_feat = [

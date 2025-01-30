@@ -38,12 +38,12 @@ from ebrec.models.newsrec.model_config import (
     print_hparams,
 )
 from ebrec.models.newsrec.lstur_docvec import LSTURDocVec
-from ebrec.models.newsrec.npa import NPAModel
+from ebrec.models.newsrec.npa_docvec import NPADocVec
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 from arguments.args_lstur_docvec import get_args as get_args_lstur
-from arguments.args_npa import get_args as get_args_npa
+from arguments.args_npa_docvec import get_args as get_args_npa
 
 args = get_args_lstur()
 args = get_args_lstur() if args.model == "LSTURModel" else get_args_npa()
@@ -72,17 +72,12 @@ FRACTION_TEST = args.fraction_test if not DEBUG else 0.0001
 # =====================================================================================
 
 # Model in use:
-model_func = LSTURDocVec if args.model == "LSTURDocVec" else NPAModel
+model_func = LSTURDocVec if args.model == "LSTURDocVec" else NPADocVec
 hparams = hparams_lstur_docvec if model_func.__name__ == "LSTURDocVec" else hparams_npa
 
 for key, value in vars(args).items():
     if hasattr(hparams, key):
         setattr(hparams, key, value)
-
-# Handle special cases separately
-TRANSFORMER_MODEL_NAME = args.transformer_model_name
-MAX_TITLE_LENGTH = args.title_size
-hparams.title_size = MAX_TITLE_LENGTH
 
 ## LSTURModel:
 TEXT_COLUMNS_TO_USE = [DEFAULT_TITLE_COL, DEFAULT_SUBTITLE_COL, DEFAULT_BODY_COL]

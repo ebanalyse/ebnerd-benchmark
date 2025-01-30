@@ -41,7 +41,7 @@ from ebrec.models.newsrec import NRMSModel
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-from args_nrms_docvec import get_args
+from arguments.args_nrms_docvec import get_args
 
 args = get_args()
 

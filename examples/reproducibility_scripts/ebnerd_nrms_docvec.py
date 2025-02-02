@@ -304,26 +304,47 @@ df_pred_test_wo_beyond.select(DEFAULT_IMPRESSION_ID_COL, "ranked_scores").write_
 )
 # =====================================================================================
 print("Initiating testset with beyond-accuracy...")
-test_dataloader_w_b = NRMSDataLoader(
-    behaviors=df_test_w_beyond,
-    article_dict=article_mapping,
-    unknown_representation="zeros",
-    history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
-    eval_mode=True,
-    batch_size=BATCH_SIZE_TEST_W_B,
-)
-scores = model.scorer.predict(test_dataloader_w_b)
-df_pred_test_w_beyond = add_prediction_scores(
-    df_test_w_beyond, scores.tolist()
-).with_columns(
-    pl.col("scores")
-    .map_elements(lambda x: list(rank_predictions_by_score(x)))
-    .alias("ranked_scores")
-)
+df_test_chunks = split_df_chunks(df_test_w_beyond, n_chunks=N_CHUNKS_TEST)
+df_pred_test_w_beyond = []
+for i, df_test_chunk in enumerate(df_test_chunks[CHUNKS_DONE:], start=1 + CHUNKS_DONE):
+    print(f"Test chunk: {i}/{len(df_test_chunks)}")
+    # Initialize DataLoader
+    test_dataloader_w_b = NRMSDataLoader(
+        behaviors=df_test_chunk,
+        article_dict=article_mapping,
+        unknown_representation="zeros",
+        history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
+        eval_mode=True,
+        batch_size=BATCH_SIZE_TEST_W_B,
+    )
+
+    # Predict and clear session
+    scores = model.scorer.predict(test_dataloader_w_b)
+    tf.keras.backend.clear_session()
+
+    # Process the predictions
+    df_test_chunk = add_prediction_scores(df_test_chunk, scores.tolist()).with_columns(
+        pl.col("scores")
+        .map_elements(lambda x: list(rank_predictions_by_score(x)))
+        .alias("ranked_scores")
+    )
+
+    # Save the processed chunk
+    df_test_chunk.select(DEFAULT_IMPRESSION_ID_COL, "ranked_scores").write_parquet(
+        TEST_CHUNKS_DIR.joinpath(f"pred_w_ba_{i}.parquet")
+    )
+
+    # Append and clean up
+    df_pred_test_w_beyond.append(df_test_chunk)
+
+    # Cleanup
+    del df_test_chunk, test_dataloader_w_b, scores
+    gc.collect()
+
+df_pred_test_w_beyond = pl.concat(df_pred_test_w_beyond)
 df_pred_test_w_beyond.select(DEFAULT_IMPRESSION_ID_COL, "ranked_scores").write_parquet(
     TEST_CHUNKS_DIR.joinpath("pred_w_ba.parquet")
 )
-
 # =====================================================================================
 print("Saving prediction results...")
 df_test = pl.concat([df_pred_test_wo_beyond, df_pred_test_w_beyond])

@@ -33,7 +33,7 @@ from ebrec.utils._polars import split_df_chunks, concat_str_columns
 from ebrec.models.newsrec.dataloader import LSTURDataLoader
 from ebrec.models.newsrec.model_config import (
     hparams_lstur_docvec,
-    hparams_npa,
+    hparams_npa_docvec,
     hparams_to_dict,
     print_hparams,
 )
@@ -73,7 +73,9 @@ FRACTION_TEST = args.fraction_test if not DEBUG else 0.0001
 
 # Model in use:
 model_func = LSTURDocVec if args.model == "LSTURDocVec" else NPADocVec
-hparams = hparams_lstur_docvec if model_func.__name__ == "LSTURDocVec" else hparams_npa
+hparams = (
+    hparams_lstur_docvec if model_func.__name__ == "LSTURDocVec" else hparams_npa_docvec
+)
 
 for key, value in vars(args).items():
     if hasattr(hparams, key):

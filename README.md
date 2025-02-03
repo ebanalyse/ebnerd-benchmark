@@ -107,13 +107,13 @@ python examples/reproducibility_scripts/ebnerd_nrms_docvec.py \
   --head_num 16 \
   --head_dim 16 \
   --attention_hidden_dim 200 \
-  --newsencoder_units_per_layer 512 512 512 \
+  --newsencoder_units_per_layer 256 256 256 \
   --learning_rate 1e-4 \
   --dropout 0.2 \
   --newsencoder_l2_regularization 1e-4
 ```
 
-### LSTURDocVec
+### [LSTURDocVec](https://github.com/ebanalyse/ebnerd-benchmark/blob/main/src/ebrec/models/newsrec/lstur_docvec.py) 
 
 ```
 python examples/reproducibility_scripts/ebnerd_lstur_npa_docvec.py \
@@ -132,7 +132,7 @@ python examples/reproducibility_scripts/ebnerd_lstur_npa_docvec.py \
   --newsencoder_l2_regularization 1e-4
 ```
 
-### NPADocVec
+### [NPADocVec](https://github.com/ebanalyse/ebnerd-benchmark/blob/main/src/ebrec/models/newsrec/npa_docvec.py) 
 
 ```
 python examples/reproducibility_scripts/ebnerd_lstur_npa_docvec.py \
@@ -146,7 +146,7 @@ python examples/reproducibility_scripts/ebnerd_lstur_npa_docvec.py \
   --attention_hidden_dim 200 \
   --user_emb_dim 400 \
   --filter_num 400 \
-  --newsencoder_units_per_layer 512 512 512 \
+  --newsencoder_units_per_layer 256 256 256 \
   --learning_rate 1e-4 \
   --dropout 0.2 \
   --newsencoder_l2_regularization 1e-4

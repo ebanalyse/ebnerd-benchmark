@@ -46,7 +46,7 @@ from arguments.args_lstur_docvec import get_args as get_args_lstur
 from arguments.args_npa_docvec import get_args as get_args_npa
 
 args = get_args_lstur()
-args = get_args_lstur() if args.model == "LSTURModel" else get_args_npa()
+args = get_args_lstur() if args.model == "LSTURDocVec" else get_args_npa()
 
 for arg, val in vars(args).items():
     print(f"{arg} : {val}")

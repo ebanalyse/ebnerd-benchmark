@@ -117,7 +117,7 @@ python examples/reproducibility_scripts/ebnerd_nrms_docvec.py \
 
 ```
 python examples/reproducibility_scripts/ebnerd_lstur_npa_docvec.py \
-  --model LSTURDocVec
+  --model LSTURDocVec \
   --datasplit ebnerd_small \
   --epochs 5 \
   --bs_train 32 \
@@ -136,7 +136,7 @@ python examples/reproducibility_scripts/ebnerd_lstur_npa_docvec.py \
 
 ```
 python examples/reproducibility_scripts/ebnerd_lstur_npa_docvec.py \
-  --model NPADocVec
+  --model NPADocVec \
   --datasplit ebnerd_small \
   --epochs 5 \
   --bs_train 32 \

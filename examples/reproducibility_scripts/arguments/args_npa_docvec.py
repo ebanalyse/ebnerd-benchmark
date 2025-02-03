@@ -14,7 +14,7 @@ def get_args():
     parser.add_argument(
         "--model",
         type=str,
-        default="LSTURDocVec",
+        default="NPADocVec",
         help="'NPADocVec' and 'LSTURDocVec' the functionality. Hence, this should always be 'LSTURDocVec'",
     )
     parser.add_argument(

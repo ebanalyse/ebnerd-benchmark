@@ -70,6 +70,11 @@ Activate your enviroment:
 conda activate <environment_name>
 ```
 
+#### Tensorboards:
+```
+tensorboard --logdir=ebnerd_predictions/runs
+```
+
 ### [NRMSModel](https://github.com/ebanalyse/ebnerd-benchmark/blob/main/src/ebrec/models/newsrec/nrms.py) 
 
 ```
@@ -87,11 +92,6 @@ python examples/reproducibility_scripts/ebnerd_nrms.py
   --attention_hidden_dim 200 \
   --learning_rate 1e-4 \
   --dropout 0.20
-```
-
-Tensorboards:
-```
-tensorboard --logdir=ebnerd_predictions/runs
 ```
 
 ### [NRMSDocVec](https://github.com/ebanalyse/ebnerd-benchmark/blob/main/src/ebrec/models/newsrec/nrms_docvec.py) 
@@ -113,10 +113,41 @@ python examples/reproducibility_scripts/ebnerd_nrms_docvec.py \
   --newsencoder_l2_regularization 1e-4
 ```
 
-Tensorboards:
+### LSTURDocVec
+
 ```
-tensorboard --logdir=ebnerd_predictions/runs
+python examples/reproducibility_scripts/ebnerd_lstur_npa_docvec.py \
+  --model LSTURDocVec
+  --datasplit ebnerd_small \
+  --epochs 5 \
+  --bs_train 32 \
+  --history_size 20 \
+  --npratio 4 \
+  --document_embeddings Ekstra_Bladet_contrastive_vector/contrastive_vector.parquet \
+  --type ini \
+  --gru_unit 400 \
+  --newsencoder_units_per_layer 256 256 256 \
+  --learning_rate 1e-4 \
+  --dropout 0.2 \
+  --newsencoder_l2_regularization 1e-4
 ```
 
+### NPADocVec
 
-
+```
+python examples/reproducibility_scripts/ebnerd_lstur_npa_docvec.py \
+  --model NPADocVec
+  --datasplit ebnerd_small \
+  --epochs 5 \
+  --bs_train 32 \
+  --history_size 20 \
+  --npratio 4 \
+  --document_embeddings Ekstra_Bladet_contrastive_vector/contrastive_vector.parquet \
+  --attention_hidden_dim 200 \
+  --user_emb_dim 400 \
+  --filter_num 400 \
+  --newsencoder_units_per_layer 512 512 512 \
+  --learning_rate 1e-4 \
+  --dropout 0.2 \
+  --newsencoder_l2_regularization 1e-4
+```

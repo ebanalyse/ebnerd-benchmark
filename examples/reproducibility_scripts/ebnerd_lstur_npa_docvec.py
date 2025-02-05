@@ -366,13 +366,3 @@ df_test = pl.concat([df_pred_test_wo_beyond, df_pred_test_w_beyond])
 df_test.select(DEFAULT_IMPRESSION_ID_COL, "ranked_scores").write_parquet(
     ARTIFACT_DIR.joinpath("test_predictions.parquet")
 )
-
-if TEST_CHUNKS_DIR.exists() and TEST_CHUNKS_DIR.is_dir():
-    shutil.rmtree(TEST_CHUNKS_DIR)
-
-write_submission_file(
-    impression_ids=df_test[DEFAULT_IMPRESSION_ID_COL],
-    prediction_scores=df_test["ranked_scores"],
-    path=ARTIFACT_DIR.joinpath("predictions.txt"),
-    filename_zip=f"{MODEL_NAME}-{SEED}-{DATASPLIT}.zip",
-)

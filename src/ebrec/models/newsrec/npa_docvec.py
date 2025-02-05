@@ -63,7 +63,7 @@ class NPADocVec:
         """
 
         if optimizer == "adam":
-            train_opt = keras.optimizers.Adam(learning_rate=lr)
+            train_opt = tf.keras.optimizers.legacy.Adam(learning_rate=lr)
         else:
             raise ValueError(f"this optimizer not defined {optimizer}")
 

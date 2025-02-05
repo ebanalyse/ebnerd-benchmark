@@ -45,7 +45,7 @@ def get_args():
         "--newsencoder_units_per_layer",
         nargs="+",
         type=int,
-        default=[512, 512, 512],
+        default=[256, 256, 256],
         help="List of units per layer in the news encoder",
     )
     parser.add_argument(

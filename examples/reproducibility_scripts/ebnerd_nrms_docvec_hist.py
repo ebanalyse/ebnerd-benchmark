@@ -241,13 +241,13 @@ model.model.load_weights(MODEL_WEIGHTS)
 
 # First filter: only keep users with >FILTER_MIN_HISTORY in history-size
 FILTER_MIN_HISTORY = 100
-# Truncate the history
-HIST_SIZE = 100
 
 # =>
 df = (
     ebnerd_from_path(
-        PATH.joinpath(DATASPLIT, "validation"), history_size=200, padding=None
+        PATH.joinpath(DATASPLIT, "validation"),
+        history_size=200,  # > FILTER_MIN_HISTORY
+        padding=None,  # NO PADDING!
     )
     .sample(fraction=FRACTION_TEST)
     .filter(pl.col(DEFAULT_HISTORY_ARTICLE_ID_COL).list.len() >= FILTER_MIN_HISTORY)
@@ -270,7 +270,7 @@ pairs = [
     (20, 128),
     (40, 64),
     (80, 64),
-    (160, 8),
+    (FILTER_MIN_HISTORY, 8),
 ]
 
 aucs = []

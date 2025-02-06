@@ -57,9 +57,7 @@ class NRMSDocVec:
             object: An optimizer.
         """
         if optimizer == "adam":
-            train_opt = train_opt = tf.keras.optimizers.legacy.Adam(learning_rate=lr)(
-                learning_rate=lr
-            )
+            train_opt = train_opt = tf.keras.optimizers.legacy.Adam(learning_rate=lr)
         else:
             raise ValueError(f"this optimizer not defined {optimizer}")
         return train_opt

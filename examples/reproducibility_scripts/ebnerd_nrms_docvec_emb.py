@@ -27,10 +27,10 @@ from ebrec.models.newsrec.nrms_docvec import NRMSDocVec
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-# python examples/reproducibility_scripts/ebnerd_nrms_docvec_emb.py --document_embeddings Ekstra_Bladet_word2vec/document_vector.parquet --title_size 300  --debug
-# python examples/reproducibility_scripts/ebnerd_nrms_docvec_emb.py --document_embeddings Ekstra_Bladet_contrastive_vector/contrastive_vector.parquet --title_size 768 --debug
-# python examples/reproducibility_scripts/ebnerd_nrms_docvec_emb.py --document_embeddings google_bert_base_multilingual_cased/bert_base_multilingual_cased.parquet --title_size 768 --debug
-# python examples/reproducibility_scripts/ebnerd_nrms_docvec_emb.py --document_embeddings FacebookAI_xlm_roberta_base/xlm_roberta_base.parquet --title_size 768 --debug
+# python examples/reproducibility_scripts/ebnerd_nrms_docvec_emb.py --document_embeddings Ekstra_Bladet_word2vec/document_vector.parquet --title_size 300
+# python examples/reproducibility_scripts/ebnerd_nrms_docvec_emb.py --document_embeddings Ekstra_Bladet_contrastive_vector/contrastive_vector.parquet --title_size 768
+# python examples/reproducibility_scripts/ebnerd_nrms_docvec_emb.py --document_embeddings google_bert_base_multilingual_cased/bert_base_multilingual_cased.parquet --title_size 768
+# python examples/reproducibility_scripts/ebnerd_nrms_docvec_emb.py --document_embeddings FacebookAI_xlm_roberta_base/xlm_roberta_base.parquet --title_size 768
 
 from arguments.args_nrms_docvec import get_args
 

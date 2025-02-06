@@ -110,11 +110,6 @@ ARTIFACT_DIR = DUMP_DIR.joinpath("test_predictions", MODEL_NAME)
 # Model monitoring:
 MODEL_WEIGHTS = DUMP_DIR.joinpath(f"state_dict/{MODEL_OUTPUT_NAME}/weights")
 LOG_DIR = DUMP_DIR.joinpath(f"runs/{MODEL_OUTPUT_NAME}")
-# Evaluating the test test can be memory intensive, we'll chunk it up:
-TEST_CHUNKS_DIR = ARTIFACT_DIR.joinpath("test_chunks")
-TEST_CHUNKS_DIR.mkdir(parents=True, exist_ok=True)
-N_CHUNKS_TEST = 10
-CHUNKS_DONE = 0  # if it crashes, you can start from here.
 # Just trying keeping the dataframe slime:
 COLUMNS = [
     DEFAULT_IMPRESSION_TIMESTAMP_COL,
@@ -252,7 +247,7 @@ HIST_SIZE = 100
 # =>
 df = (
     ebnerd_from_path(
-        PATH.joinpath(DATASPLIT, "validation"), history_size=120, padding=None
+        PATH.joinpath(DATASPLIT, "validation"), history_size=200, padding=None
     )
     .sample(fraction=FRACTION_TEST)
     .filter(pl.col(DEFAULT_HISTORY_ARTICLE_ID_COL).list.len() >= FILTER_MIN_HISTORY)
@@ -263,19 +258,19 @@ df = (
 pairs = [
     (1, 256),
     (2, 256),
-    (3, 256),
+    # (3, 256),
     (4, 256),
-    (5, 256),
-    (6, 256),
-    (7, 256),
+    # (5, 256),
+    # (6, 256),
+    # (7, 256),
     (8, 256),
-    (9, 256),
+    # (9, 256),
     (10, 256),
-    (15, 128),
+    # (16, 128),
     (20, 128),
-    (30, 64),
     (40, 64),
-    (50, 64),
+    (80, 64),
+    (160, 8),
 ]
 
 aucs = []
@@ -320,7 +315,3 @@ for h, a in zip(hists, aucs):
 
 results = {h: a for h, a in zip(hists, aucs)}
 write_json_file(results, ARTIFACT_DIR.joinpath("auc_history_length.json"))
-
-# Clean up
-if TEST_CHUNKS_DIR.exists() and TEST_CHUNKS_DIR.is_dir():
-    shutil.rmtree(TEST_CHUNKS_DIR)

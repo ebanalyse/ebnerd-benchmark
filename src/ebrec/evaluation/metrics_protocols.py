@@ -30,7 +30,10 @@ class AccuracyScore(Metric):
                     each_labels, convert_to_binary(each_preds, self.threshold)
                 )
                 for each_labels, each_preds in tqdm(
-                    zip(y_true, y_pred), ncols=80, total=len(y_true), desc="AUC"
+                    zip(y_true, y_pred),
+                    ncols=80,
+                    total=len(y_true),
+                    desc=f"{self.name}",
                 )
             ]
         )
@@ -47,7 +50,10 @@ class F1Score(Metric):
             [
                 f1_score(each_labels, convert_to_binary(each_preds, self.threshold))
                 for each_labels, each_preds in tqdm(
-                    zip(y_true, y_pred), ncols=80, total=len(y_true), desc="AUC"
+                    zip(y_true, y_pred),
+                    ncols=80,
+                    total=len(y_true),
+                    desc=f"{self.name}",
                 )
             ]
         )
@@ -63,7 +69,10 @@ class RootMeanSquaredError(Metric):
             [
                 np.sqrt(mean_squared_error(each_labels, each_preds))
                 for each_labels, each_preds in tqdm(
-                    zip(y_true, y_pred), ncols=80, total=len(y_true), desc="AUC"
+                    zip(y_true, y_pred),
+                    ncols=80,
+                    total=len(y_true),
+                    desc=f"{self.name}",
                 )
             ]
         )
@@ -79,7 +88,10 @@ class AucScore(Metric):
             [
                 roc_auc_score(each_labels, each_preds)
                 for each_labels, each_preds in tqdm(
-                    zip(y_true, y_pred), ncols=80, total=len(y_true), desc="AUC"
+                    zip(y_true, y_pred),
+                    ncols=80,
+                    total=len(y_true),
+                    desc=f"{self.name}",
                 )
             ]
         )
@@ -98,7 +110,10 @@ class LogLossScore(Metric):
                     [max(min(p, 1.0 - 10e-12), 10e-12) for p in each_preds],
                 )
                 for each_labels, each_preds in tqdm(
-                    zip(y_true, y_pred), ncols=80, total=len(y_true), desc="AUC"
+                    zip(y_true, y_pred),
+                    ncols=80,
+                    total=len(y_true),
+                    desc=f"{self.name}",
                 )
             ]
         )
@@ -114,7 +129,10 @@ class MrrScore(Metric):
             [
                 mrr_score(each_labels, each_preds)
                 for each_labels, each_preds in tqdm(
-                    zip(y_true, y_pred), ncols=80, total=len(y_true), desc="AUC"
+                    zip(y_true, y_pred),
+                    ncols=80,
+                    total=len(y_true),
+                    desc=f"{self.name}",
                 )
             ]
         )
@@ -131,7 +149,10 @@ class NdcgScore(Metric):
             [
                 ndcg_score(each_labels, each_preds, self.k)
                 for each_labels, each_preds in tqdm(
-                    zip(y_true, y_pred), ncols=80, total=len(y_true), desc="AUC"
+                    zip(y_true, y_pred),
+                    ncols=80,
+                    total=len(y_true),
+                    desc=f"{self.name}",
                 )
             ]
         )

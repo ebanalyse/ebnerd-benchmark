@@ -1,13 +1,7 @@
-from transformers import AutoTokenizer, AutoModel
-from ebrec.utils._nlp import get_transformers_word_embeddings
-from ebrec.utils._articles import convert_text2encoding_with_transformers
-
 from pathlib import Path
 import tensorflow as tf
 import datetime as dt
 import polars as pl
-import shutil
-import gc
 import os
 
 from ebrec.utils._constants import *
@@ -16,30 +10,27 @@ from ebrec.utils._behaviors import (
     create_binary_labels_column,
     sampling_strategy_wu2019,
     add_prediction_scores,
-    truncate_history,
     ebnerd_from_path,
 )
 from ebrec.evaluation import MetricEvaluator, AucScore, NdcgScore, MrrScore
 
-from ebrec.utils._python import (
-    write_submission_file,
-    rank_predictions_by_score,
-    write_json_file,
-)
 from ebrec.utils._articles import create_article_id_to_value_mapping
-from ebrec.utils._polars import split_df_chunks, concat_str_columns
+from ebrec.utils._python import write_json_file
 
 from ebrec.models.newsrec.dataloader import NRMSDataLoader, NRMSDataLoaderPretransform
 from ebrec.models.newsrec.model_config import (
-    hparams_nrms,
     hparams_nrms_docvec,
     hparams_to_dict,
     print_hparams,
 )
 from ebrec.models.newsrec.nrms_docvec import NRMSDocVec
-from ebrec.models.newsrec import NRMSModel
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
+# python examples/reproducibility_scripts/ebnerd_nrms_docvec_emb.py --document_embeddings Ekstra_Bladet_word2vec/document_vector.parquet --title_size 300  --debug
+# python examples/reproducibility_scripts/ebnerd_nrms_docvec_emb.py --document_embeddings Ekstra_Bladet_contrastive_vector/contrastive_vector.parquet --title_size 768 --debug
+# python examples/reproducibility_scripts/ebnerd_nrms_docvec_emb.py --document_embeddings google_bert_base_multilingual_cased/bert_base_multilingual_cased.parquet --title_size 768 --debug
+# python examples/reproducibility_scripts/ebnerd_nrms_docvec_emb.py --document_embeddings FacebookAI_xlm_roberta_base/xlm_roberta_base.parquet --title_size 768 --debug
 
 from arguments.args_nrms_docvec import get_args
 
@@ -55,8 +46,6 @@ DATASPLIT = args.datasplit
 DEBUG = args.debug
 BS_TRAIN = args.bs_train
 BS_TEST = args.bs_test
-BATCH_SIZE_TEST_WO_B = args.batch_size_test_wo_b
-BATCH_SIZE_TEST_W_B = args.batch_size_test_w_b
 HISTORY_SIZE = args.history_size
 NPRATIO = args.npratio
 EPOCHS = args.epochs
@@ -73,6 +62,14 @@ NRMSLoader_training = (
 #  ############################# UNIQUE FOR NRMSModel ################################
 # =====================================================================================
 
+# Data-path
+DOC_VEC_PATH = PATH.joinpath(f"artifacts/{args.document_embeddings}")
+print("Initiating articles...")
+df_articles = pl.read_parquet(DOC_VEC_PATH)
+article_mapping = create_article_id_to_value_mapping(
+    df=df_articles, value_col=df_articles.columns[-1]
+)
+
 # Model in use:
 model_func = NRMSDocVec
 hparams = hparams_nrms_docvec
@@ -82,15 +79,6 @@ for key, value in vars(args).items():
         setattr(hparams, key, value)
 
 print_hparams(hparams)
-
-# =============
-# Data-path
-DOC_VEC_PATH = PATH.joinpath(f"artifacts/{args.document_embeddings}")
-print("Initiating articles...")
-df_articles = pl.read_parquet(DOC_VEC_PATH)
-article_mapping = create_article_id_to_value_mapping(
-    df=df_articles, value_col=df_articles.columns[-1]
-)
 
 # =====================================================================================
 #  ############################# UNIQUE FOR NRMSDocVec ###############################
@@ -106,15 +94,11 @@ DT_NOW = dt.datetime.now()
 MODEL_NAME = model_func.__name__
 MODEL_OUTPUT_NAME = f"{MODEL_NAME}-{DT_NOW}"
 #
-ARTIFACT_DIR = DUMP_DIR.joinpath("test_predictions", MODEL_NAME)
+ARTIFACT_DIR = DUMP_DIR.joinpath("test_predictions", MODEL_OUTPUT_NAME)
 # Model monitoring:
 MODEL_WEIGHTS = DUMP_DIR.joinpath(f"state_dict/{MODEL_OUTPUT_NAME}/weights")
 LOG_DIR = DUMP_DIR.joinpath(f"runs/{MODEL_OUTPUT_NAME}")
-# Evaluating the test test can be memory intensive, we'll chunk it up:
-TEST_CHUNKS_DIR = ARTIFACT_DIR.joinpath("test_chunks")
-TEST_CHUNKS_DIR.mkdir(parents=True, exist_ok=True)
-N_CHUNKS_TEST = 10
-CHUNKS_DONE = 0  # if it crashes, you can start from here.
+
 # Just trying keeping the dataframe slime:
 COLUMNS = [
     DEFAULT_IMPRESSION_TIMESTAMP_COL,
@@ -134,7 +118,11 @@ write_json_file(vars(args), ARTIFACT_DIR.joinpath(f"{MODEL_NAME}_argparser.json"
 # =====================================================================================
 
 df = (
-    ebnerd_from_path(PATH.joinpath(DATASPLIT, "train"), history_size=HISTORY_SIZE)
+    ebnerd_from_path(
+        PATH.joinpath(DATASPLIT, "train"),
+        history_size=HISTORY_SIZE,
+        padding=0,
+    )
     .sample(fraction=TRAIN_FRACTION, shuffle=True, seed=SEED)
     .select(COLUMNS)
     .pipe(
@@ -244,83 +232,33 @@ model.model.load_weights(MODEL_WEIGHTS)
 
 # =====================================================================================
 
-# First filter: only keep users with >FILTER_MIN_HISTORY in history-size
-FILTER_MIN_HISTORY = 100
-# Truncate the history
-HIST_SIZE = 100
-
 # =>
-df = (
+df_ = (
     ebnerd_from_path(
-        PATH.joinpath(DATASPLIT, "validation"), history_size=120, padding=None
+        PATH.joinpath(DATASPLIT, "validation"),
+        history_size=HISTORY_SIZE,
+        padding=0,
     )
     .sample(fraction=FRACTION_TEST)
-    .filter(pl.col(DEFAULT_HISTORY_ARTICLE_ID_COL).list.len() >= FILTER_MIN_HISTORY)
-    .select(COLUMNS)
     .pipe(create_binary_labels_column)
 )
 
-pairs = [
-    (1, 256),
-    (2, 256),
-    (3, 256),
-    (4, 256),
-    (5, 256),
-    (6, 256),
-    (7, 256),
-    (8, 256),
-    (9, 256),
-    (10, 256),
-    (15, 128),
-    (20, 128),
-    (30, 64),
-    (40, 64),
-    (50, 64),
-]
+test_dataloader = NRMSDataLoader(
+    behaviors=df_,
+    article_dict=article_mapping,
+    unknown_representation="zeros",
+    history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
+    eval_mode=True,
+    batch_size=BS_TEST,
+)
 
-aucs = []
-hists = []
-for hist_size, batch_size in pairs:
-    print(f"History size: {hist_size}, Batch size: {batch_size}")
+scores = model.scorer.predict(test_dataloader)
 
-    df_ = df.pipe(
-        truncate_history,
-        column=DEFAULT_HISTORY_ARTICLE_ID_COL,
-        history_size=hist_size,
-        padding_value=0,
-        enable_warning=False,
-    )
-
-    test_dataloader = NRMSDataLoader(
-        behaviors=df_,
-        article_dict=article_mapping,
-        unknown_representation="zeros",
-        history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
-        eval_mode=True,
-        batch_size=batch_size,
-    )
-
-    scores = model.scorer.predict(test_dataloader)
-
-    df_pred = add_prediction_scores(df_, scores.tolist())
-
-    metrics = MetricEvaluator(
-        labels=df_pred["labels"],
-        predictions=df_pred["scores"],
-        metric_functions=[AucScore()],
-    )
-    metrics.evaluate()
-    auc = metrics.evaluations["auc"]
-    aucs.append(round(auc, 4))
-    hists.append(hist_size)
-    print(f"{auc} (History size: {hist_size}, Batch size: {batch_size})")
-
-for h, a in zip(hists, aucs):
-    print(f"({a}, {h}),")
-
-results = {h: a for h, a in zip(hists, aucs)}
-write_json_file(results, ARTIFACT_DIR.joinpath("auc_history_length.json"))
-
-# Clean up
-if TEST_CHUNKS_DIR.exists() and TEST_CHUNKS_DIR.is_dir():
-    shutil.rmtree(TEST_CHUNKS_DIR)
+df_pred = add_prediction_scores(df_, scores.tolist())
+metrics = MetricEvaluator(
+    labels=df_pred["labels"],
+    predictions=df_pred["scores"],
+    metric_functions=[AucScore(), MrrScore(), NdcgScore(k=5), NdcgScore(k=10)],
+)
+results = metrics.evaluate()
+write_json_file(results.evaluations, ARTIFACT_DIR.joinpath("results.json"))

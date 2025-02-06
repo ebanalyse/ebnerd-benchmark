@@ -81,9 +81,6 @@ for key, value in vars(args).items():
     if hasattr(hparams, key):
         setattr(hparams, key, value)
 
-## LSTURModel:
-TEXT_COLUMNS_TO_USE = [DEFAULT_TITLE_COL, DEFAULT_SUBTITLE_COL, DEFAULT_BODY_COL]
-
 # =============
 # Data-path
 DOC_VEC_PATH = PATH.joinpath(f"artifacts/{args.document_embeddings}")

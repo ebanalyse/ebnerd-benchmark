@@ -27,10 +27,10 @@ from ebrec.models.newsrec.nrms_docvec import NRMSDocVec
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-# conda activate ./venv; python examples/reproducibility_scripts/ebnerd_nrms_docvec_emb.py --title_size 300 --document_embeddings Ekstra_Bladet_word2vec/document_vector.parquet 
-# conda activate ./venv; python examples/reproducibility_scripts/ebnerd_nrms_docvec_emb.py --title_size 768 --document_embeddings Ekstra_Bladet_contrastive_vector/contrastive_vector.parquet 
-# conda activate ./venv; python examples/reproducibility_scripts/ebnerd_nrms_docvec_emb.py --title_size 768 --document_embeddings google_bert_base_multilingual_cased/bert_base_multilingual_cased.parquet 
-# conda activate ./venv; python examples/reproducibility_scripts/ebnerd_nrms_docvec_emb.py --title_size 768 --document_embeddings FacebookAI_xlm_roberta_base/xlm_roberta_base.parquet 
+# conda activate ./venv; python examples/reproducibility_scripts/ebnerd_nrms_docvec_emb.py --title_size 300 --document_embeddings Ekstra_Bladet_word2vec/document_vector.parquet
+# conda activate ./venv; python examples/reproducibility_scripts/ebnerd_nrms_docvec_emb.py --title_size 768 --document_embeddings Ekstra_Bladet_contrastive_vector/contrastive_vector.parquet
+# conda activate ./venv; python examples/reproducibility_scripts/ebnerd_nrms_docvec_emb.py --title_size 768 --document_embeddings google_bert_base_multilingual_cased/bert_base_multilingual_cased.parquet
+# conda activate ./venv; python examples/reproducibility_scripts/ebnerd_nrms_docvec_emb.py --title_size 768 --document_embeddings FacebookAI_xlm_roberta_base/xlm_roberta_base.parquet
 
 from arguments.args_nrms_docvec import get_args
 
@@ -46,6 +46,8 @@ DATASPLIT = args.datasplit
 DEBUG = args.debug
 BS_TRAIN = args.bs_train
 BS_TEST = args.bs_test
+BATCH_SIZE_TEST_WO_B = args.batch_size_test_wo_b
+BATCH_SIZE_TEST_W_B = args.batch_size_test_w_b
 HISTORY_SIZE = args.history_size
 NPRATIO = args.npratio
 EPOCHS = args.epochs
@@ -139,25 +141,6 @@ last_dt = df[DEFAULT_IMPRESSION_TIMESTAMP_COL].dt.date().max() - dt.timedelta(da
 df_train = df.filter(pl.col(DEFAULT_IMPRESSION_TIMESTAMP_COL).dt.date() < last_dt)
 df_validation = df.filter(pl.col(DEFAULT_IMPRESSION_TIMESTAMP_COL).dt.date() >= last_dt)
 
-
-# =====================================================================================
-train_dataloader = NRMSDataLoaderPretransform(
-    behaviors=df_train,
-    article_dict=article_mapping,
-    unknown_representation="zeros",
-    history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
-    eval_mode=False,
-    batch_size=BS_TRAIN,
-)
-
-val_dataloader = NRMSDataLoaderPretransform(
-    behaviors=df_validation,
-    article_dict=article_mapping,
-    unknown_representation="zeros",
-    history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
-    eval_mode=False,
-    batch_size=BS_TEST,
-)
 
 # =====================================================================================
 print(f"Initiating training-dataloader")

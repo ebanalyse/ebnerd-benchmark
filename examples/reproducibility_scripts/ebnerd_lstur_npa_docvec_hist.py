@@ -22,33 +22,36 @@ from ebrec.utils._behaviors import (
 from ebrec.evaluation import MetricEvaluator, AucScore, NdcgScore, MrrScore
 
 from ebrec.utils._python import (
-    write_submission_file,
     rank_predictions_by_score,
+    write_submission_file,
+    create_lookup_dict,
     write_json_file,
 )
 from ebrec.utils._articles import create_article_id_to_value_mapping
 from ebrec.utils._polars import split_df_chunks, concat_str_columns
 
-from ebrec.models.newsrec.dataloader import NRMSDataLoader, NRMSDataLoaderPretransform
+from ebrec.models.newsrec.dataloader import LSTURDataLoader
 from ebrec.models.newsrec.model_config import (
-    hparams_nrms,
-    hparams_nrms_docvec,
+    hparams_lstur_docvec,
+    hparams_npa_docvec,
     hparams_to_dict,
     print_hparams,
 )
-from ebrec.models.newsrec.nrms_docvec import NRMSDocVec
-from ebrec.models.newsrec import NRMSModel
+from ebrec.models.newsrec.lstur_docvec import LSTURDocVec
+from ebrec.models.newsrec.npa_docvec import NPADocVec
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-from arguments.args_nrms_docvec import get_args
+from arguments.args_lstur_docvec import get_args as get_args_lstur
+from arguments.args_npa_docvec import get_args as get_args_npa
 
-args = get_args()
+args = get_args_lstur()
+args = get_args_lstur() if args.model == "LSTURDocVec" else get_args_npa()
 
 for arg, val in vars(args).items():
     print(f"{arg} : {val}")
 
-# conda activate ./venv; python examples/reproducibility_scripts/ebnerd_lstur_npa_docvec_hist.py --debug
+# conda activate ./venv; python examples/reproducibility_scripts/ebnerd_lstur_npa_docvec_hist.py
 
 PATH = Path(args.data_path).expanduser()
 # Access arguments as variables
@@ -65,27 +68,11 @@ EPOCHS = args.epochs
 TRAIN_FRACTION = args.train_fraction if not DEBUG else 0.0001
 FRACTION_TEST = args.fraction_test if not DEBUG else 0.0001
 
-NRMSLoader_training = (
-    NRMSDataLoaderPretransform
-    if args.nrms_loader == "NRMSDataLoaderPretransform"
-    else NRMSDataLoader
-)
 
 # =====================================================================================
 #  ############################# UNIQUE FOR NRMSModel ################################
 # =====================================================================================
 
-# Model in use:
-model_func = NRMSDocVec
-hparams = hparams_nrms_docvec
-#
-for key, value in vars(args).items():
-    if hasattr(hparams, key):
-        setattr(hparams, key, value)
-
-print_hparams(hparams)
-
-# =============
 # Data-path
 DOC_VEC_PATH = PATH.joinpath(f"artifacts/{args.document_embeddings}")
 print("Initiating articles...")
@@ -93,6 +80,18 @@ df_articles = pl.read_parquet(DOC_VEC_PATH)
 article_mapping = create_article_id_to_value_mapping(
     df=df_articles, value_col=df_articles.columns[-1]
 )
+
+# Model in use:
+model_func = LSTURDocVec if args.model == "LSTURDocVec" else NPADocVec
+hparams = (
+    hparams_lstur_docvec if model_func.__name__ == "LSTURDocVec" else hparams_npa_docvec
+)
+#
+for key, value in vars(args).items():
+    if hasattr(hparams, key):
+        setattr(hparams, key, value)
+
+print_hparams(hparams)
 
 # =====================================================================================
 #  ############################# UNIQUE FOR NRMSDocVec ###############################
@@ -148,21 +147,31 @@ last_dt = df[DEFAULT_IMPRESSION_TIMESTAMP_COL].dt.date().max() - dt.timedelta(da
 df_train = df.filter(pl.col(DEFAULT_IMPRESSION_TIMESTAMP_COL).dt.date() < last_dt)
 df_validation = df.filter(pl.col(DEFAULT_IMPRESSION_TIMESTAMP_COL).dt.date() >= last_dt)
 
+user_id_mapping = create_lookup_dict(
+    df_train.select(DEFAULT_USER_COL)
+    .unique()
+    .with_row_index(name="id", offset=1)[: args.n_users],
+    key=DEFAULT_USER_COL,
+    value="id",
+)
+hparams.n_users = len(user_id_mapping)
 
 # =====================================================================================
 print(f"Initiating training-dataloader")
-train_dataloader = NRMSLoader_training(
+train_dataloader = LSTURDataLoader(
     behaviors=df_train,
     article_dict=article_mapping,
+    user_id_mapping=user_id_mapping,
     unknown_representation="zeros",
     history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
     eval_mode=False,
     batch_size=BS_TRAIN,
 )
 
-val_dataloader = NRMSLoader_training(
+val_dataloader = LSTURDataLoader(
     behaviors=df_validation,
     article_dict=article_mapping,
+    user_id_mapping=user_id_mapping,
     unknown_representation="zeros",
     history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
     eval_mode=False,
@@ -269,9 +278,10 @@ for hist_size, batch_size in pairs:
         enable_warning=False,
     )
 
-    test_dataloader = NRMSDataLoader(
+    test_dataloader = LSTURDataLoader(
         behaviors=df_,
         article_dict=article_mapping,
+        user_id_mapping=user_id_mapping,
         unknown_representation="zeros",
         history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
         eval_mode=True,

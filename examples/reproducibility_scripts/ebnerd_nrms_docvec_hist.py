@@ -48,7 +48,7 @@ args = get_args()
 for arg, val in vars(args).items():
     print(f"{arg} : {val}")
 
-# conda activate ./venv; python examples/reproducibility_scripts/ebnerd_lstur_npa_docvec_hist.py --debug
+# conda activate ./venv; python examples/reproducibility_scripts/ebnerd_nrms_docvec_hist.py --debug
 
 PATH = Path(args.data_path).expanduser()
 # Access arguments as variables

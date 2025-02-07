@@ -108,7 +108,7 @@ DT_NOW = dt.datetime.now()
 MODEL_NAME = model_func.__name__
 MODEL_OUTPUT_NAME = f"{MODEL_NAME}-hist-{DT_NOW}"
 #
-ARTIFACT_DIR = DUMP_DIR.joinpath("test_predictions", MODEL_NAME)
+ARTIFACT_DIR = DUMP_DIR.joinpath("test_predictions", MODEL_OUTPUT_NAME)
 # Model monitoring:
 MODEL_WEIGHTS = DUMP_DIR.joinpath(f"state_dict/{MODEL_OUTPUT_NAME}/weights")
 LOG_DIR = DUMP_DIR.joinpath(f"runs/{MODEL_OUTPUT_NAME}")
@@ -241,23 +241,16 @@ df = (
 pairs = [
     (1, 256),
     (2, 256),
-    # (3, 256),
     (4, 256),
-    # (5, 256),
-    # (6, 256),
-    # (7, 256),
     (8, 256),
-    # (9, 256),
     (10, 256),
-    # (16, 128),
     (20, 128),
     (40, 64),
     (80, 64),
     (FILTER_MIN_HISTORY, 8),
 ]
 
-aucs = []
-hists = []
+results = {}
 for hist_size, batch_size in pairs:
     print(f"History size: {hist_size}, Batch size: {batch_size}")
 
@@ -285,16 +278,18 @@ for hist_size, batch_size in pairs:
     metrics = MetricEvaluator(
         labels=df_pred["labels"],
         predictions=df_pred["scores"],
-        metric_functions=[AucScore()],
+        metric_functions=[
+            AucScore(),
+            MrrScore(),
+            NdcgScore(5),
+            NdcgScore(10),
+        ],
     )
     metrics.evaluate()
-    auc = metrics.evaluations["auc"]
-    aucs.append(round(auc, 4))
-    hists.append(hist_size)
-    print(f"{auc} (History size: {hist_size}, Batch size: {batch_size})")
+    print(metrics.evaluations)
+    results[hist_size] = metrics.evaluations
 
-for h, a in zip(hists, aucs):
-    print(f"({a}, {h}),")
+for key, val in results.items():
+    print(f"({key}, {val['auc']}),")
 
-results = {h: a for h, a in zip(hists, aucs)}
-write_json_file(results, ARTIFACT_DIR.joinpath("auc_history_length.json"))
+write_json_file(results, ARTIFACT_DIR.joinpath(f"auc_history_length_{MODEL_NAME}.json"))

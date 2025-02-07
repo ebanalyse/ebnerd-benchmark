@@ -4,28 +4,8 @@
 source $(conda info --base)/etc/profile.d/conda.sh
 conda activate ./venv
 
-# NPA
-python examples/reproducibility_scripts/ebnerd_lstur_npa_docvec_hist.py \
-    --debug \
-    --model NPADocVec \
-    --datasplit ebnerd_small \
-    --epochs 5 \
-    --bs_train 32 \
-    --history_size 20 \
-    --npratio 4 \
-    --document_embeddings Ekstra_Bladet_contrastive_vector/contrastive_vector.parquet \
-    --attention_hidden_dim 200 \
-    --user_emb_dim 400 \
-    --filter_num 400 \
-    --newsencoder_units_per_layer 256 256 256 \
-    --learning_rate 1e-4 \
-    --dropout 0.2 \
-    --newsencoder_l2_regularization 1e-4
-
-
 # NRMS
 python examples/reproducibility_scripts/ebnerd_nrms_docvec_hist.py \
-    --debug \
     --datasplit ebnerd_small \
     --epochs 5 \
     --bs_train 32 \
@@ -42,7 +22,6 @@ python examples/reproducibility_scripts/ebnerd_nrms_docvec_hist.py \
 
 # LSTUR
 python examples/reproducibility_scripts/ebnerd_lstur_npa_docvec_hist.py \
-    --debug \
     --model LSTURDocVec \
     --datasplit ebnerd_small \
     --epochs 5 \
@@ -57,3 +36,19 @@ python examples/reproducibility_scripts/ebnerd_lstur_npa_docvec_hist.py \
     --dropout 0.2 \
     --newsencoder_l2_regularization 1e-4
 
+# NPA
+python examples/reproducibility_scripts/ebnerd_lstur_npa_docvec_hist.py \
+    --model NPADocVec \
+    --datasplit ebnerd_small \
+    --epochs 5 \
+    --bs_train 32 \
+    --history_size 20 \
+    --npratio 4 \
+    --document_embeddings Ekstra_Bladet_contrastive_vector/contrastive_vector.parquet \
+    --attention_hidden_dim 200 \
+    --user_emb_dim 400 \
+    --filter_num 400 \
+    --newsencoder_units_per_layer 256 256 256 \
+    --learning_rate 1e-4 \
+    --dropout 0.2 \
+    --newsencoder_l2_regularization 1e-4

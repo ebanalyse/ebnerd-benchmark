@@ -109,8 +109,9 @@ DUMP_DIR.mkdir(exist_ok=True, parents=True)
 #
 DT_NOW = dt.datetime.now()
 #
+emb_name = args.document_embeddings.split("/")[1].split(".")[0]
 MODEL_NAME = model_func.__name__
-MODEL_OUTPUT_NAME = f"{MODEL_NAME}-{DT_NOW}"
+MODEL_OUTPUT_NAME = f"{MODEL_NAME}-{emb_name}-{DT_NOW}"
 #
 ARTIFACT_DIR = DUMP_DIR.joinpath("test_predictions", MODEL_OUTPUT_NAME)
 # Model monitoring:

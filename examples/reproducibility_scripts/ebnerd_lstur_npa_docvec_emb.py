@@ -45,8 +45,10 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 from arguments.args_lstur_docvec import get_args as get_args_lstur
 from arguments.args_npa_docvec import get_args as get_args_npa
 
-args = get_args_lstur()
-args = get_args_lstur() if args.model == "LSTURDocVec" else get_args_npa()
+try:
+    args = get_args_lstur()
+except:
+    args = get_args_npa()
 
 for arg, val in vars(args).items():
     print(f"{arg} : {val}")

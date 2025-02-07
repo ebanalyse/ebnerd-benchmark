@@ -45,8 +45,10 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 from arguments.args_lstur_docvec import get_args as get_args_lstur
 from arguments.args_npa_docvec import get_args as get_args_npa
 
-args = get_args_lstur()
-args = get_args_lstur() if args.model == "LSTURDocVec" else get_args_npa()
+try:
+    args = get_args_lstur()
+except:
+    args = get_args_npa()
 
 for arg, val in vars(args).items():
     print(f"{arg} : {val}")
@@ -105,9 +107,9 @@ DUMP_DIR.mkdir(exist_ok=True, parents=True)
 DT_NOW = dt.datetime.now()
 #
 MODEL_NAME = model_func.__name__
-MODEL_OUTPUT_NAME = f"{MODEL_NAME}-{DT_NOW}"
+MODEL_OUTPUT_NAME = f"{MODEL_NAME}-hist-{DT_NOW}"
 #
-ARTIFACT_DIR = DUMP_DIR.joinpath("test_predictions", MODEL_NAME)
+ARTIFACT_DIR = DUMP_DIR.joinpath("test_predictions", MODEL_OUTPUT_NAME)
 # Model monitoring:
 MODEL_WEIGHTS = DUMP_DIR.joinpath(f"state_dict/{MODEL_OUTPUT_NAME}/weights")
 LOG_DIR = DUMP_DIR.joinpath(f"runs/{MODEL_OUTPUT_NAME}")

@@ -100,14 +100,16 @@ class NPADocVec:
         """
 
         his_input_title = keras.Input(
-            shape=(self.hparams.history_size, self.hparams.title_size), dtype="float32"
+            # shape = (history_size, title_size)
+            shape=(None, None), dtype="float32" 
         )
         user_indexes = keras.Input(shape=(1,), dtype="float32")
 
         nuser_id = layers.Reshape((1, 1))(user_indexes)
-        repeat_uids = layers.Concatenate(axis=-2)(
-            [nuser_id] * self.hparams.history_size
-        )
+
+        # 
+        history_size = tf.shape(his_input_title)[1] 
+        repeat_uids = tf.tile(nuser_id, [1, history_size, 1])
         his_title_uid = layers.Concatenate(axis=-1)([his_input_title, repeat_uids])
 
         click_title_presents = layers.TimeDistributed(titleencoder)(his_title_uid)

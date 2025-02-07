@@ -106,7 +106,7 @@ DUMP_DIR.mkdir(exist_ok=True, parents=True)
 DT_NOW = dt.datetime.now()
 #
 MODEL_NAME = model_func.__name__
-MODEL_OUTPUT_NAME = f"{MODEL_NAME}-{DT_NOW}"
+MODEL_OUTPUT_NAME = f"{MODEL_NAME}-hist-{DT_NOW}"
 #
 ARTIFACT_DIR = DUMP_DIR.joinpath("test_predictions", MODEL_NAME)
 # Model monitoring:

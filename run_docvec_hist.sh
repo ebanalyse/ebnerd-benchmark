@@ -41,7 +41,6 @@ python examples/reproducibility_scripts/ebnerd_lstur_npa_docvec_hist.py \
 python examples/reproducibility_scripts/ebnerd_lstur_npa_docvec_hist.py \
     --model NPADocVec \
     --n_users 0 \
-    --debug \
     --datasplit ebnerd_small \
     --epochs 5 \
     --bs_train 32 \

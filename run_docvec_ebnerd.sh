@@ -5,7 +5,7 @@ source $(conda info --base)/etc/profile.d/conda.sh
 conda activate ./venv
 
 # NRMS
-python examples/reproducibility_scripts/ebnerd_nrms_docvec_hist.py \
+python examples/reproducibility_scripts/ebnerd_nrms_docvec.py \
     --datasplit ebnerd_small \
     --title_size 768 \
     --document_embeddings FacebookAI_xlm_roberta_base/xlm_roberta_base.parquet \

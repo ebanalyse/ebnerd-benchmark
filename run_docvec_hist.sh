@@ -23,6 +23,7 @@ python examples/reproducibility_scripts/ebnerd_nrms_docvec_hist.py \
 # LSTUR
 python examples/reproducibility_scripts/ebnerd_lstur_npa_docvec_hist.py \
     --model LSTURDocVec \
+    --n_users 0 \
     --datasplit ebnerd_small \
     --epochs 5 \
     --bs_train 32 \
@@ -39,6 +40,8 @@ python examples/reproducibility_scripts/ebnerd_lstur_npa_docvec_hist.py \
 # NPA
 python examples/reproducibility_scripts/ebnerd_lstur_npa_docvec_hist.py \
     --model NPADocVec \
+    --n_users 0 \
+    --debug \
     --datasplit ebnerd_small \
     --epochs 5 \
     --bs_train 32 \
@@ -46,7 +49,6 @@ python examples/reproducibility_scripts/ebnerd_lstur_npa_docvec_hist.py \
     --npratio 4 \
     --document_embeddings Ekstra_Bladet_contrastive_vector/contrastive_vector.parquet \
     --attention_hidden_dim 200 \
-    --user_emb_dim 400 \
     --filter_num 400 \
     --newsencoder_units_per_layer 256 256 256 \
     --learning_rate 1e-4 \

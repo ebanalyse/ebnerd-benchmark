@@ -21,7 +21,6 @@ python examples/reproducibility_scripts/ebnerd_nrms_docvec.py \
     --dropout 0.2 \
     --newsencoder_l2_regularization 1e-4
 
-
 # LSTUR
 python examples/reproducibility_scripts/ebnerd_lstur_npa_docvec.py \
     --model LSTURDocVec \

@@ -12,6 +12,7 @@ from .beyond_accuracy import (
     IntralistDiversity,
     Distribution,
     Serendipity,
+    Sentiment,
     Coverage,
     Novelty,
 )

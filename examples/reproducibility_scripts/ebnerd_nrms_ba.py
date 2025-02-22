@@ -36,10 +36,7 @@ from ebrec.evaluation import (
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-# conda activate ./venv; python examples/reproducibility_scripts/ebnerd_nrms_docvec_emb.py --title_size 300 --document_embeddings Ekstra_Bladet_word2vec/document_vector.parquet
-# conda activate ./venv; python examples/reproducibility_scripts/ebnerd_nrms_docvec_emb.py --title_size 768 --document_embeddings Ekstra_Bladet_contrastive_vector/contrastive_vector.parquet
-# conda activate ./venv; python examples/reproducibility_scripts/ebnerd_nrms_docvec_emb.py --title_size 768 --document_embeddings google_bert_base_multilingual_cased/bert_base_multilingual_cased.parquet
-# conda activate ./venv; python examples/reproducibility_scripts/ebnerd_nrms_docvec_emb.py --title_size 768 --document_embeddings FacebookAI_xlm_roberta_base/xlm_roberta_base.parquet
+# conda activate ./venv; python examples/reproducibility_scripts/ebnerd_nrms_ba.py --title_size 768 --document_embeddings Ekstra_Bladet_contrastive_vector/contrastive_vector.parquet --debug
 
 from arguments.args_nrms_docvec import get_args
 

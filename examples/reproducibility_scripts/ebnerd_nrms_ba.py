@@ -2,6 +2,7 @@ from pathlib import Path
 import tensorflow as tf
 import datetime as dt
 import polars as pl
+import numpy as np
 import os
 
 from ebrec.utils._constants import *
@@ -15,7 +16,7 @@ from ebrec.utils._behaviors import (
 from ebrec.evaluation import MetricEvaluator, AucScore, NdcgScore, MrrScore
 
 from ebrec.utils._articles import create_article_id_to_value_mapping
-from ebrec.utils._python import write_json_file
+from ebrec.utils._python import write_json_file, get_top_n_candidates
 
 from ebrec.models.newsrec.dataloader import NRMSDataLoader, NRMSDataLoaderPretransform
 from ebrec.models.newsrec.model_config import (
@@ -24,6 +25,14 @@ from ebrec.models.newsrec.model_config import (
     print_hparams,
 )
 from ebrec.models.newsrec.nrms_docvec import NRMSDocVec
+
+from ebrec.evaluation import (
+    IntralistDiversity,
+    Distribution,
+    Serendipity,
+    Coverage,
+    Novelty,
+)
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -66,10 +75,20 @@ NRMSLoader_training = (
 
 # Data-path
 DOC_VEC_PATH = PATH.joinpath(f"artifacts/{args.document_embeddings}")
+DOC_VEC_PATH_BA = PATH.joinpath(
+    "artifacts/Ekstra_Bladet_contrastive_vector/contrastive_vector.parquet"
+)
 print("Initiating articles...")
-df_articles = pl.read_parquet(DOC_VEC_PATH)
+df_articles = pl.read_parquet(PATH.joinpath("articles.parquet"))
+df_emb = pl.read_parquet(DOC_VEC_PATH)
+df_emb_ba = pl.read_parquet(DOC_VEC_PATH_BA)
+
+df_articles = df_articles.join(df_emb, on=DEFAULT_ARTICLE_ID_COL).join(
+    df_emb_ba, on=DEFAULT_ARTICLE_ID_COL
+)
+
 article_mapping = create_article_id_to_value_mapping(
-    df=df_articles, value_col=df_articles.columns[-1]
+    df=df_articles, value_col=df_emb.columns[-1]
 )
 
 # Model in use:
@@ -273,6 +292,40 @@ df_ba = (
     )
 )
 
+DEFAULT_TOTAL_PAGEVIEWS_COL_NORMALIZED_MAX = (
+    DEFAULT_TOTAL_PAGEVIEWS_COL + "_normalized_max"
+)
+DEFAULT_TOTAL_PAGEVIEWS_COL_NORMALIZED_MIN_MAX = (
+    DEFAULT_TOTAL_PAGEVIEWS_COL + "_normalized_min_max"
+)
+
+MIN_X = df_articles[DEFAULT_TOTAL_PAGEVIEWS_COL].min()
+MAX_X = df_articles[DEFAULT_TOTAL_PAGEVIEWS_COL].max()
+MIN_RANGE = 1e-4
+MAX_RANGE = 1.0
+
+df_articles = (
+    df_articles.with_columns(
+        pl.col(DEFAULT_TOTAL_INVIEWS_COL, DEFAULT_TOTAL_PAGEVIEWS_COL).fill_null(1)
+    )
+    .with_columns(
+        (  # SIMPLE MAX NORMALIZATION: x / max()
+            pl.col(DEFAULT_TOTAL_PAGEVIEWS_COL)
+            / pl.col(DEFAULT_TOTAL_PAGEVIEWS_COL).max()
+        ).alias(DEFAULT_TOTAL_PAGEVIEWS_COL_NORMALIZED_MAX)
+    )
+    .with_columns(
+        (  #  MIN-MAX NORMALIZATION: ( x_i − X_min ⁡ ) / ( X_max ⁡ − X_min ⁡ ) * (max_range − min_range) + min_range
+            ((pl.col(DEFAULT_TOTAL_PAGEVIEWS_COL) - MIN_X) / (MAX_X - MIN_X))
+            * (MAX_RANGE - MIN_RANGE)
+            + MIN_RANGE
+        ).alias(
+            DEFAULT_TOTAL_PAGEVIEWS_COL_NORMALIZED_MIN_MAX
+        )
+    )
+)
+
+
 ba_dataloader = NRMSLoader_training(
     behaviors=df_ba,
     article_dict=article_mapping,
@@ -281,22 +334,51 @@ ba_dataloader = NRMSLoader_training(
     eval_mode=True,
     batch_size=BS_TEST,
 )
-ba_scores = model.scorer.predict(train_dataloader)
+ba_scores = model.scorer.predict(ba_dataloader)
 df_ba = add_prediction_scores(df_ba, ba_scores.tolist())
+ba_emb_name = df_emb_ba.columns[-1]
 
+articles_dict = {}
+for row in df_articles.iter_rows(named=True):
+    articles_dict[row[DEFAULT_ARTICLE_ID_COL]] = row
 
-from ebrec.evaluation import (
-    IntralistDiversity,
-    Distribution,
-    Serendipity,
-    Sentiment,
-    Coverage,
-    Novelty,
+topn = 5
+recs_scores = np.array(df_ba.select(pl.col("scores")).to_series().to_list())
+cand_list = np.array(df_ba[DEFAULT_INVIEW_ARTICLES_COL][0])
+hist = df_ba.select(DEFAULT_HISTORY_ARTICLE_ID_COL).to_series().to_list()
+recs_topn = get_top_n_candidates(
+    candidates_array=cand_list, scores_matrix=recs_scores, top_n=topn
 )
 
+# =>
 intralist_diversity = IntralistDiversity()
 distribution = Distribution()
 serendipity = Serendipity()
-sentiment = Sentiment()
 coverage = Coverage()
 novelty = Novelty()
+
+div = intralist_diversity(
+    R=recs_topn, lookup_dict=articles_dict, lookup_key=ba_emb_name
+).mean()
+dist_sent = distribution(
+    R=recs_topn, lookup_dict=articles_dict, lookup_key="sentiment_label"
+)
+dist_cat = distribution(
+    R=recs_topn, lookup_dict=articles_dict, lookup_key="category_str"
+)
+ser = serendipity(
+    R=recs_topn, H=hist, lookup_dict=articles_dict, lookup_key=ba_emb_name
+).mean()
+cov = coverage(R=recs_topn, C=cand_list)[1]
+nov = novelty(
+    R=recs_topn,
+    lookup_dict=articles_dict,
+    lookup_key=DEFAULT_TOTAL_PAGEVIEWS_COL_NORMALIZED_MIN_MAX,
+).mean()
+
+results.evaluations.update(
+    {"diversity": div, "serendipity": ser, "coverage": cov, "novelty": nov}
+)
+results.evaluations.update(dist_sent)
+results.evaluations.update(dist_cat)
+write_json_file(results.evaluations, ARTIFACT_DIR.joinpath("results.json"))

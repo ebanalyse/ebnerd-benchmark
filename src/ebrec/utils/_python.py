@@ -507,3 +507,35 @@ def batch_items_generator(items: Iterable[any], batch_size: int):
     """
     for i in range(0, len(items), batch_size):
         yield items[i : i + batch_size]
+
+
+def get_top_n_candidates(
+    candidates_array: np.ndarray, scores_matrix: np.ndarray, top_n: int
+) -> np.ndarray:
+    """
+    >>> cand_list = np.array([1, 2, 3, 4, 5])
+    >>> recs = np.array([[0.2, 0.8, 0.5, 0.9, 0.1], [0.1, 0.2, 0.3, 0.2, 0.5]])
+    >>> cand_list[np.argsort(recs)]
+    >>> topn = 2
+    >>> get_top_n_candidates(cand_list, recs, topn)
+        array([[4, 2],
+                [5, 3]])
+    """
+    if not isinstance(scores_matrix, np.ndarray) or not isinstance(
+        candidates_array, np.ndarray
+    ):
+        raise ValueError(
+            "Both candidates_array and scores_matrix must be NumPy arrays."
+        )
+    if scores_matrix.ndim != 2:
+        raise ValueError("scores_matrix must be a 2D NumPy array.")
+    if candidates_array.shape[0] != scores_matrix.shape[1]:
+        raise ValueError(
+            "candidates_array size must match the number of columns in scores_matrix."
+        )
+    if top_n <= 0:
+        raise ValueError("top_n must be a positive integer.")
+
+    top_indices = np.argsort(scores_matrix, axis=1)[:, ::-1][:, :top_n]
+    top_candidates = np.take(candidates_array, top_indices)
+    return top_candidates

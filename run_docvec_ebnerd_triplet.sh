@@ -2,7 +2,7 @@
 
 # Activate the Conda environment
 source $(conda info --base)/etc/profile.d/conda.sh
-conda activate ./.venv
+conda activate ./venv
 
 # ========= USER INFORMATION =========
 # User History: 10 / 20

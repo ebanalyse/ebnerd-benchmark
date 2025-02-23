@@ -539,3 +539,18 @@ def get_top_n_candidates(
     top_indices = np.argsort(scores_matrix, axis=1)[:, ::-1][:, :top_n]
     top_candidates = np.take(candidates_array, top_indices)
     return top_candidates
+
+
+def split_array(arr, n):
+    """
+    Splits an array into chunks of size `n`.
+    >>> arr = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    >>> n = 2
+    >>> split_array(arr, n)
+    """
+    idx = 0
+    result = []
+    for i in range(0, len(arr), n):
+        result.append(arr[idx : idx + n])
+        idx += n
+    return result

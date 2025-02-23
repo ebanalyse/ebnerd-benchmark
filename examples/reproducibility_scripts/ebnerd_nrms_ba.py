@@ -16,7 +16,7 @@ from ebrec.utils._behaviors import (
 from ebrec.evaluation import MetricEvaluator, AucScore, NdcgScore, MrrScore
 
 from ebrec.utils._articles import create_article_id_to_value_mapping
-from ebrec.utils._python import write_json_file, get_top_n_candidates
+from ebrec.utils._python import write_json_file, get_top_n_candidates, split_array
 
 from ebrec.models.newsrec.dataloader import NRMSDataLoader, NRMSDataLoaderPretransform
 from ebrec.models.newsrec.model_config import (
@@ -36,7 +36,7 @@ from ebrec.evaluation import (
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-# conda activate ./venv; python examples/reproducibility_scripts/ebnerd_nrms_ba.py --title_size 768 --document_embeddings Ekstra_Bladet_contrastive_vector/contrastive_vector.parquet --debug
+# conda activate ./venv; python -i examples/reproducibility_scripts/ebnerd_nrms_ba.py --title_size 768 --document_embeddings Ekstra_Bladet_contrastive_vector/contrastive_vector.parquet --debug
 
 from arguments.args_nrms_docvec import get_args
 
@@ -332,7 +332,8 @@ ba_dataloader = NRMSLoader_training(
     batch_size=BS_TEST,
 )
 ba_scores = model.scorer.predict(ba_dataloader)
-df_ba = add_prediction_scores(df_ba, ba_scores.tolist())
+_ba_scores = split_array(ba_scores.ravel(), 250)
+df_ba = df_ba.with_columns(pl.Series("scores", _ba_scores))
 ba_emb_name = df_emb_ba.columns[-1]
 
 articles_dict = {}

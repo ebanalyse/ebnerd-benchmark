@@ -264,6 +264,16 @@ results = metrics.evaluate()
 print(results.evaluations)
 write_json_file(results.evaluations, ARTIFACT_DIR.joinpath("results.json"))
 
+del (
+    test_dataloader,
+    train_dataloader,
+    val_dataloader,
+    df_,
+    df_train,
+    df_validation,
+    df_pred,
+)
+
 # BA results:
 print("Initiating testset...")
 df_ba = (
@@ -327,7 +337,7 @@ ba_dataloader = NRMSDataLoader(
     unknown_representation="zeros",
     history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
     eval_mode=True,
-    batch_size=BS_TEST,
+    batch_size=4,
 )
 ba_scores = model.scorer.predict(ba_dataloader)
 _ba_scores = split_array(ba_scores.ravel(), 250)

@@ -265,8 +265,6 @@ print(results.evaluations)
 write_json_file(results.evaluations, ARTIFACT_DIR.joinpath("results.json"))
 
 # BA results:
-PATH = Path("~/ebnerd_data")
-FRACTION_TEST = 0.01
 print("Initiating testset...")
 df_ba = (
     ebnerd_from_path(
@@ -323,7 +321,7 @@ df_articles = (
 )
 
 
-ba_dataloader = NRMSLoader_training(
+ba_dataloader = NRMSDataLoader(
     behaviors=df_ba,
     article_dict=article_mapping,
     unknown_representation="zeros",

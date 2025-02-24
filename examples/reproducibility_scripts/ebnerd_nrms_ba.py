@@ -1,6 +1,7 @@
 from pathlib import Path
 import tensorflow as tf
 import datetime as dt
+from tqdm import tqdm
 import polars as pl
 import numpy as np
 import os
@@ -345,17 +346,32 @@ df_ba = df_ba.with_columns(pl.Series("scores", _ba_scores))
 ba_emb_name = df_emb_ba.columns[-1]
 
 articles_dict = {}
-for row in df_articles.iter_rows(named=True):
-    articles_dict[row[DEFAULT_ARTICLE_ID_COL]] = row
+for row in tqdm(df_articles.iter_rows(named=True), ncols=80, total=df_articles.height):
+    articles_dict[row[DEFAULT_ARTICLE_ID_COL]] = {
+        ba_emb_name: row[ba_emb_name],
+        "sentiment_label": row["sentiment_label"],
+        "category_str": row["category_str"],
+        DEFAULT_TOTAL_PAGEVIEWS_COL_NORMALIZED_MIN_MAX: row[
+            DEFAULT_TOTAL_PAGEVIEWS_COL_NORMALIZED_MIN_MAX
+        ],
+    }
 
 topn = 5
-recs_scores = np.array(df_ba.select(pl.col("scores")).to_series().to_list())
 cand_list = np.array(df_ba[DEFAULT_INVIEW_ARTICLES_COL][0])
-hist = df_ba.select(DEFAULT_HISTORY_ARTICLE_ID_COL).to_series().to_list()
-recs_topn = get_top_n_candidates(
-    candidates_array=cand_list, scores_matrix=recs_scores, top_n=topn
-)
+recs_topn = []
+hist = []
 
+for df_chunk in tqdm(df_ba.iter_slices(n_rows=1_000)):
+    recs_scores = np.array(df_chunk.select(pl.col("scores")).to_series().to_list())
+    hist.append(df_chunk.select(DEFAULT_HISTORY_ARTICLE_ID_COL).to_series().to_list())
+    recs_topn.append(
+        get_top_n_candidates(
+            candidates_array=cand_list, scores_matrix=recs_scores, top_n=topn
+        )
+    )
+
+hist = np.concatenate(hist)
+recs_topn = np.concatenate(recs_topn)
 # =>
 intralist_diversity = IntralistDiversity()
 distribution = Distribution()

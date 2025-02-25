@@ -28,4 +28,5 @@ venv
 # just for now:
 evaluate_predictions.py
 ebnerd_predictions/
+run_docvec_ba_xN.sh
 downloads.py

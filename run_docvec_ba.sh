@@ -36,7 +36,6 @@ python examples/reproducibility_scripts/ebnerd_lstur_npa_ba.py \
     --history_size 20 \
     --newsencoder_units_per_layer 256 256 256 \
     --document_embeddings Ekstra_Bladet_word2vec/document_vector.parquet \
-    --debug
 
 # NPA
 python examples/reproducibility_scripts/ebnerd_lstur_npa_ba.py \
@@ -45,4 +44,3 @@ python examples/reproducibility_scripts/ebnerd_lstur_npa_ba.py \
     --history_size 20 \
     --newsencoder_units_per_layer 256 256 256 \
     --document_embeddings Ekstra_Bladet_word2vec/document_vector.parquet \
-    --debug

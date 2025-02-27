@@ -1,13 +1,9 @@
-from transformers import AutoTokenizer, AutoModel
-from ebrec.utils._nlp import get_transformers_word_embeddings
-from ebrec.utils._articles import convert_text2encoding_with_transformers
-
 from pathlib import Path
 import tensorflow as tf
 import datetime as dt
+from tqdm import tqdm
 import polars as pl
-import shutil
-import gc
+import numpy as np
 import os
 
 from ebrec.utils._constants import *
@@ -28,7 +24,7 @@ from ebrec.utils._python import (
     write_json_file,
 )
 from ebrec.utils._articles import create_article_id_to_value_mapping
-from ebrec.utils._polars import split_df_chunks, concat_str_columns
+from ebrec.utils._python import write_json_file, get_top_n_candidates, split_array
 
 from ebrec.models.newsrec.dataloader import LSTURDataLoader
 from ebrec.models.newsrec.model_config import (
@@ -39,6 +35,14 @@ from ebrec.models.newsrec.model_config import (
 )
 from ebrec.models.newsrec.lstur_docvec import LSTURDocVec
 from ebrec.models.newsrec.npa_docvec import NPADocVec
+
+from ebrec.evaluation import (
+    IntralistDiversity,
+    Distribution,
+    Serendipity,
+    Coverage,
+    Novelty,
+)
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -53,7 +57,7 @@ except:
 for arg, val in vars(args).items():
     print(f"{arg} : {val}")
 
-# conda activate ./venv; python examples/reproducibility_scripts/ebnerd_lstur_npa_docvec_hist.py
+# conda activate ./venv; python examples/reproducibility_scripts/ebnerd_lstur_npa_ba.py --debug
 
 PATH = Path(args.data_path).expanduser()
 # Access arguments as variables
@@ -77,10 +81,20 @@ FRACTION_TEST = args.fraction_test if not DEBUG else 0.0001
 
 # Data-path
 DOC_VEC_PATH = PATH.joinpath(f"artifacts/{args.document_embeddings}")
+DOC_VEC_PATH_BA = PATH.joinpath(
+    "artifacts/Ekstra_Bladet_contrastive_vector/contrastive_vector.parquet"
+)
 print("Initiating articles...")
-df_articles = pl.read_parquet(DOC_VEC_PATH)
+df_articles = pl.read_parquet(PATH.joinpath("articles.parquet"))
+df_emb = pl.read_parquet(DOC_VEC_PATH)
+df_emb_ba = pl.read_parquet(DOC_VEC_PATH_BA)
+
+df_articles = df_articles.join(df_emb, on=DEFAULT_ARTICLE_ID_COL).join(
+    df_emb_ba, on=DEFAULT_ARTICLE_ID_COL
+)
+
 article_mapping = create_article_id_to_value_mapping(
-    df=df_articles, value_col=df_articles.columns[-1]
+    df=df_articles, value_col=df_emb.columns[-1]
 )
 
 # Model in use:
@@ -106,13 +120,15 @@ DUMP_DIR.mkdir(exist_ok=True, parents=True)
 #
 DT_NOW = dt.datetime.now()
 #
+emb_name = args.document_embeddings.split("/")[1].split(".")[0]
 MODEL_NAME = model_func.__name__
-MODEL_OUTPUT_NAME = f"{MODEL_NAME}-hist-{DT_NOW}"
+MODEL_OUTPUT_NAME = f"{MODEL_NAME}-{emb_name}-{DT_NOW}"
 #
 ARTIFACT_DIR = DUMP_DIR.joinpath("test_predictions", MODEL_OUTPUT_NAME)
 # Model monitoring:
 MODEL_WEIGHTS = DUMP_DIR.joinpath(f"state_dict/{MODEL_OUTPUT_NAME}/weights")
 LOG_DIR = DUMP_DIR.joinpath(f"runs/{MODEL_OUTPUT_NAME}")
+
 # Just trying keeping the dataframe slime:
 COLUMNS = [
     DEFAULT_IMPRESSION_TIMESTAMP_COL,
@@ -132,7 +148,11 @@ write_json_file(vars(args), ARTIFACT_DIR.joinpath(f"{MODEL_NAME}_argparser.json"
 # =====================================================================================
 
 df = (
-    ebnerd_from_path(PATH.joinpath(DATASPLIT, "train"), history_size=HISTORY_SIZE)
+    ebnerd_from_path(
+        PATH.joinpath(DATASPLIT, "train"),
+        history_size=HISTORY_SIZE,
+        padding=0,
+    )
     .sample(fraction=TRAIN_FRACTION, shuffle=True, seed=SEED)
     .select(COLUMNS)
     .pipe(
@@ -157,6 +177,7 @@ user_id_mapping = create_lookup_dict(
     value="id",
 )
 hparams.n_users = len(user_id_mapping)
+
 
 # =====================================================================================
 print(f"Initiating training-dataloader")
@@ -233,74 +254,175 @@ model.model.load_weights(MODEL_WEIGHTS)
 
 # =====================================================================================
 
-# First filter: only keep users with >FILTER_MIN_HISTORY in history-size
-FILTER_MIN_HISTORY = 100
-
 # =>
-df = (
+df_ = (
     ebnerd_from_path(
         PATH.joinpath(DATASPLIT, "validation"),
-        history_size=200,  # > FILTER_MIN_HISTORY
-        padding=None,  # NO PADDING!
+        history_size=HISTORY_SIZE,
+        padding=0,
     )
     .sample(fraction=FRACTION_TEST)
-    .filter(pl.col(DEFAULT_HISTORY_ARTICLE_ID_COL).list.len() >= FILTER_MIN_HISTORY)
-    .select(COLUMNS)
     .pipe(create_binary_labels_column)
 )
 
-pairs = [
-    (1, 256),
-    (2, 256),
-    (4, 256),
-    (8, 256),
-    (10, 256),
-    (20, 128),
-    (40, 64),
-    (80, 64),
-    (FILTER_MIN_HISTORY, 8),
-]
+test_dataloader = LSTURDataLoader(
+    behaviors=df_,
+    article_dict=article_mapping,
+    user_id_mapping=user_id_mapping,
+    unknown_representation="zeros",
+    history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
+    eval_mode=True,
+    batch_size=BS_TEST,
+)
 
-aucs = []
-hists = []
-for hist_size, batch_size in pairs:
-    print(f"History size: {hist_size}, Batch size: {batch_size}")
+scores = model.scorer.predict(test_dataloader)
 
-    df_ = df.pipe(
-        truncate_history,
-        column=DEFAULT_HISTORY_ARTICLE_ID_COL,
-        history_size=hist_size,
-        padding_value=0,
-        enable_warning=False,
+df_pred = add_prediction_scores(df_, scores.tolist())
+metrics = MetricEvaluator(
+    labels=df_pred["labels"],
+    predictions=df_pred["scores"],
+    metric_functions=[AucScore(), MrrScore(), NdcgScore(k=5), NdcgScore(k=10)],
+)
+results = metrics.evaluate()
+print(results.evaluations)
+write_json_file(results.evaluations, ARTIFACT_DIR.joinpath("results.json"))
+
+del (
+    test_dataloader,
+    train_dataloader,
+    val_dataloader,
+    df_,
+    df_train,
+    df_validation,
+    df_pred,
+)
+
+# BA results:
+print("Initiating testset...")
+df_ba = (
+    ebnerd_from_path(
+        PATH.joinpath("ebnerd_testset", "test"),
+        history_size=HISTORY_SIZE,
+        padding=0,
+    )
+    .filter(pl.col(DEFAULT_IS_BEYOND_ACCURACY_COL))
+    .sample(fraction=FRACTION_TEST)
+    .with_columns(
+        pl.col(DEFAULT_INVIEW_ARTICLES_COL)
+        .list.first()
+        .alias(DEFAULT_CLICKED_ARTICLES_COL)
+    )
+    .select(COLUMNS + [DEFAULT_IS_BEYOND_ACCURACY_COL])
+    .with_columns(
+        pl.col(DEFAULT_INVIEW_ARTICLES_COL)
+        .list.eval(pl.element() * 0)
+        .alias(DEFAULT_LABELS_COL)
+    )
+)
+
+DEFAULT_TOTAL_PAGEVIEWS_COL_NORMALIZED_MAX = (
+    DEFAULT_TOTAL_PAGEVIEWS_COL + "_normalized_max"
+)
+DEFAULT_TOTAL_PAGEVIEWS_COL_NORMALIZED_MIN_MAX = (
+    DEFAULT_TOTAL_PAGEVIEWS_COL + "_normalized_min_max"
+)
+
+MIN_X = df_articles[DEFAULT_TOTAL_PAGEVIEWS_COL].min()
+MAX_X = df_articles[DEFAULT_TOTAL_PAGEVIEWS_COL].max()
+MIN_RANGE = 1e-4
+MAX_RANGE = 1.0
+
+df_articles = (
+    df_articles.with_columns(
+        pl.col(DEFAULT_TOTAL_INVIEWS_COL, DEFAULT_TOTAL_PAGEVIEWS_COL).fill_null(1)
+    )
+    .with_columns(
+        (  # SIMPLE MAX NORMALIZATION: x / max()
+            pl.col(DEFAULT_TOTAL_PAGEVIEWS_COL)
+            / pl.col(DEFAULT_TOTAL_PAGEVIEWS_COL).max()
+        ).alias(DEFAULT_TOTAL_PAGEVIEWS_COL_NORMALIZED_MAX)
+    )
+    .with_columns(
+        (  #  MIN-MAX NORMALIZATION: ( x_i − X_min ⁡ ) / ( X_max ⁡ − X_min ⁡ ) * (max_range − min_range) + min_range
+            ((pl.col(DEFAULT_TOTAL_PAGEVIEWS_COL) - MIN_X) / (MAX_X - MIN_X))
+            * (MAX_RANGE - MIN_RANGE)
+            + MIN_RANGE
+        ).alias(
+            DEFAULT_TOTAL_PAGEVIEWS_COL_NORMALIZED_MIN_MAX
+        )
+    )
+)
+
+ba_dataloader = LSTURDataLoader(
+    behaviors=df_ba,
+    article_dict=article_mapping,
+    user_id_mapping=user_id_mapping,
+    unknown_representation="zeros",
+    history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
+    eval_mode=True,
+    batch_size=4,
+)
+ba_scores = model.scorer.predict(ba_dataloader)
+_ba_scores = split_array(ba_scores.ravel(), 250)
+df_ba = df_ba.with_columns(pl.Series("scores", _ba_scores))
+ba_emb_name = df_emb_ba.columns[-1]
+
+articles_dict = {}
+for row in tqdm(df_articles.iter_rows(named=True), ncols=80, total=df_articles.height):
+    articles_dict[row[DEFAULT_ARTICLE_ID_COL]] = {
+        ba_emb_name: row[ba_emb_name],
+        "sentiment_label": row["sentiment_label"],
+        "category_str": row["category_str"],
+        DEFAULT_TOTAL_PAGEVIEWS_COL_NORMALIZED_MIN_MAX: row[
+            DEFAULT_TOTAL_PAGEVIEWS_COL_NORMALIZED_MIN_MAX
+        ],
+    }
+
+topn = 5
+cand_list = np.array(df_ba[DEFAULT_INVIEW_ARTICLES_COL][0])
+recs_topn = []
+hist = []
+
+for df_chunk in tqdm(df_ba.iter_slices(n_rows=1_000)):
+    recs_scores = np.array(df_chunk.select(pl.col("scores")).to_series().to_list())
+    hist.append(df_chunk.select(DEFAULT_HISTORY_ARTICLE_ID_COL).to_series().to_list())
+    recs_topn.append(
+        get_top_n_candidates(
+            candidates_array=cand_list, scores_matrix=recs_scores, top_n=topn
+        )
     )
 
-    test_dataloader = LSTURDataLoader(
-        behaviors=df_,
-        article_dict=article_mapping,
-        user_id_mapping=user_id_mapping,
-        unknown_representation="zeros",
-        history_column=DEFAULT_HISTORY_ARTICLE_ID_COL,
-        eval_mode=True,
-        batch_size=batch_size,
-    )
+hist = np.concatenate(hist)
+recs_topn = np.concatenate(recs_topn)
+# =>
+intralist_diversity = IntralistDiversity()
+distribution = Distribution()
+serendipity = Serendipity()
+coverage = Coverage()
+novelty = Novelty()
 
-    scores = model.scorer.predict(test_dataloader)
+div = intralist_diversity(
+    R=recs_topn, lookup_dict=articles_dict, lookup_key=ba_emb_name
+).mean()
+dist_sent = distribution(
+    R=recs_topn, lookup_dict=articles_dict, lookup_key="sentiment_label"
+)
+dist_cat = distribution(
+    R=recs_topn, lookup_dict=articles_dict, lookup_key="category_str"
+)
+ser = serendipity(
+    R=recs_topn, H=hist, lookup_dict=articles_dict, lookup_key=ba_emb_name
+).mean()
+cov = coverage(R=recs_topn, C=cand_list)[1]
+nov = novelty(
+    R=recs_topn,
+    lookup_dict=articles_dict,
+    lookup_key=DEFAULT_TOTAL_PAGEVIEWS_COL_NORMALIZED_MIN_MAX,
+).mean()
 
-    df_pred = add_prediction_scores(df_, scores.tolist())
-
-    metrics = MetricEvaluator(
-        labels=df_pred["labels"],
-        predictions=df_pred["scores"],
-        metric_functions=[AucScore()],
-    )
-    metrics.evaluate()
-    auc = metrics.evaluations["auc"]
-    aucs.append(round(auc, 4))
-    hists.append(hist_size)
-    print(f"{auc} (History size: {hist_size}, Batch size: {batch_size})")
-
-for h, a in zip(hists, aucs):
-    print(f"({a}, {h}),")
-
-results = {h: a for h, a in zip(hists, aucs)}
-write_json_file(results, ARTIFACT_DIR.joinpath("auc_history_length.json"))
+results.evaluations.update(
+    {"diversity": div, "serendipity": ser, "coverage": cov, "novelty": nov}
+)
+results.evaluations.update(dist_sent)
+results.evaluations.update(dist_cat)
+write_json_file(results.evaluations, ARTIFACT_DIR.joinpath("results.json"))

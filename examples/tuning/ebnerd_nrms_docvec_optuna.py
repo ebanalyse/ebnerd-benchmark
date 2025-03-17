@@ -42,7 +42,7 @@ from ebrec.utils._constants import *
 hparams = hparams_nrms_docvec
 model_func = NRMSDocVec
 #
-DEBUG = True
+DEBUG = False
 SEED = 123
 # ====>
 DATASPLIT = "ebnerd_small"
@@ -57,7 +57,7 @@ MODEL_NAME = model_func.__name__
 MODEL_OUTPUT_NAME = f"{MODEL_NAME}-{DT_NOW}"
 
 # ==
-N_TRIALS = 10
+N_TRIALS = 25
 #
 BS_TRAIN = 32
 BS_TEST = 32

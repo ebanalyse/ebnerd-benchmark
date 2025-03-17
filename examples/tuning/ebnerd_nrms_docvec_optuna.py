@@ -69,7 +69,7 @@ NPRATIO = 4
 nrms_loader = "NRMSDataLoaderPretransform"  # NRMSDataLoader
 
 # EXPERIMENT NAME
-experiment_name = f"hypertuning-{MODEL_NAME}"
+experiment_name = f"hypertuning-{MODEL_NAME}-debug_{DEBUG}"
 
 #
 TRAIN_FRACTION = 1.0 if not DEBUG else 0.0001
@@ -82,7 +82,7 @@ NRMSLoader_training = (
 )
 #
 
-optuna_plt_path = DUMP_DIR.joinpath(Path("optuna_plots").joinpath(experiment_name))
+optuna_plt_path = DUMP_DIR.joinpath("optuna_plots", f"{experiment_name}-{DT_NOW}")
 optuna_plt_path.mkdir(exist_ok=True, parents=True)
 mlflow.set_experiment(experiment_name)
 
@@ -181,7 +181,8 @@ def objective(trial):
     # Hyperparameters
     ##############################
     # Loguniform parameter
-    hparams.learning_rate = trial.suggest_float("lr", 1e-5, 1e-3, log=True)
+    # hparams.learning_rate = trial.suggest_float("lr", 1e-5, 1e-3, log=True)
+    hparams.learning_rate = trial.suggest_categorical("lr", [1e-3, 1e-4, 1e-5])
     # Float parameter
     hparams.dropout = trial.suggest_float("dropout", 0, 0.3, step=0.1)
 
@@ -194,9 +195,10 @@ def objective(trial):
     hparams.head_dim = trial.suggest_categorical("n_head", [16, 20, 24])
     hparams.head_num = trial.suggest_categorical("n_head", [16, 20, 24])
     hparams.attention_hidden_dim = trial.suggest_categorical("d_hid", [100, 200, 300])
-    hparams.newsencoder_units_per_layer = trial.suggest_categorical(
-        "units_per_layer", [[32] * 3, [64] * 3, [128] * 3]
+    newsencoder_units_per_layer = trial.suggest_categorical(
+        "units_per_layer", [32, 64, 128]
     )
+    hparams.newsencoder_units_per_layer = [newsencoder_units_per_layer] * 3
 
     ##############################
     # Training loop (simplified)
@@ -295,10 +297,8 @@ print("  Number of finished trials: ", len(study.trials))
 print("  Number of pruned trials: ", len(pruned_trials))
 print("  Number of complete trials: ", len(complete_trials))
 
-
-breakpoint()
 print("Best trial:")
-trial = study.trials.best_trial
+trial = study.best_trial
 print("  Value: ", trial.value)
 print("  Params: ")
 for key, value in trial.params.items():
@@ -313,8 +313,8 @@ plt.savefig(optuna_plt_path.joinpath("plot_optimization_history"), bbox_inches="
 optuna.visualization.matplotlib.plot_param_importances(study)
 plt.savefig(optuna_plt_path.joinpath("plot_param_importances"), bbox_inches="tight")
 
-optuna.visualization.matplotlib.plot_parallel_coordinate(study)(study)
-plt.savefig(optuna_plt_path.joinpath("plot_parallel_coordinate"), bbox_inches="tight")
+# optuna.visualization.matplotlib.plot_parallel_coordinate(study)(study)
+# plt.savefig(optuna_plt_path.joinpath("plot_parallel_coordinate"), bbox_inches="tight")
 
-optuna.visualization.matplotlib.plot_slice(study)(study)
-plt.savefig(optuna_plt_path.joinpath("plot_slice"), bbox_inches="tight")
+# optuna.visualization.matplotlib.plot_slice(study)(study)
+# plt.savefig(optuna_plt_path.joinpath("plot_slice"), bbox_inches="tight")

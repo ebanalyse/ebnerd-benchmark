@@ -70,6 +70,7 @@ def slice_join_dataframes(
     df2: pl.DataFrame,
     on: str,
     how: str,
+    n_rows: int = 10_000,
 ) -> pl.DataFrame:
     """
     Join two dataframes optimized for memory efficiency.
@@ -81,7 +82,7 @@ def slice_join_dataframes(
                 on=on,
                 how=how,
             )
-            for rows in df1.iter_slices()
+            for rows in df1.iter_slices(n_rows=n_rows)
         )
     )
 

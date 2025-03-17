@@ -164,6 +164,7 @@ def ebnerd_from_path(
     padding: int = 0,
     user_col: str = DEFAULT_USER_COL,
     history_aids_col: str = DEFAULT_HISTORY_ARTICLE_ID_COL,
+    n_rows: int = 10_000,
 ) -> pl.DataFrame:
     """
     Load ebnerd - function
@@ -187,6 +188,7 @@ def ebnerd_from_path(
             df2=df_history.collect(),
             on=user_col,
             how="left",
+            n_rows=n_rows,
         )
     )
     return df_behaviors

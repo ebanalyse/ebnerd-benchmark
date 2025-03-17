@@ -193,7 +193,7 @@ def objective(trial):
     hparams.history_size = trial.suggest_categorical("history_size", [HISTORY_SIZE])
     # self.head_dim * num_heads == self.embed_dim "embed_dim must be divisible by num_heads" (news_encoder dim 768 for constrastive)
     hparams.head_dim = trial.suggest_categorical("n_head", [16, 20, 24])
-    hparams.head_num = trial.suggest_categorical("n_head", [16, 20, 24])
+    hparams.head_num = trial.suggest_categorical("head_num", [16, 20, 24])
     hparams.attention_hidden_dim = trial.suggest_categorical("d_hid", [100, 200, 300])
     newsencoder_units_per_layer = trial.suggest_categorical(
         "units_per_layer", [32, 64, 128]

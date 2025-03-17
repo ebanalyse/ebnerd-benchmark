@@ -29,6 +29,18 @@ python examples/reproducibility_scripts/ebnerd_nrms_ba.py \
     --newsencoder_units_per_layer 256 256 256 \
     --document_embeddings Ekstra_Bladet_contrastive_vector/contrastive_vector.parquet 
 
+python examples/reproducibility_scripts/ebnerd_nrms_ba.py \
+    --title_size 768 \
+    --history_size 20 \
+    --newsencoder_units_per_layer 256 256 256 \
+    --document_embeddings Ekstra_Bladet_contrastive_vector/contrastive_vector.parquet 
+
+python examples/reproducibility_scripts/ebnerd_nrms_ba.py \
+    --title_size 768 \
+    --history_size 20 \
+    --newsencoder_units_per_layer 256 256 256 \
+    --document_embeddings Ekstra_Bladet_contrastive_vector/contrastive_vector.parquet 
+
 # LSTUR
 python examples/reproducibility_scripts/ebnerd_lstur_npa_ba.py \
     --model LSTURDocVec \

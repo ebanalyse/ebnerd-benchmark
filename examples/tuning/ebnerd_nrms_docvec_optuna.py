@@ -69,7 +69,7 @@ NPRATIO = 4
 nrms_loader = "NRMSDataLoaderPretransform"  # NRMSDataLoader
 
 # EXPERIMENT NAME
-experiment_name = f"hypertuning-{MODEL_NAME}-debug_{DEBUG}"
+experiment_name = f"hypertuning-{MODEL_NAME}-{DT_NOW}-debug_{DEBUG}"
 
 #
 TRAIN_FRACTION = 1.0 if not DEBUG else 0.0001

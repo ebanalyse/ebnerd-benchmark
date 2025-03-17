@@ -348,7 +348,7 @@ df_pred_test_w_beyond.select(DEFAULT_IMPRESSION_ID_COL, "ranked_scores").write_p
 # =====================================================================================
 print("Saving prediction results...")
 df_test = pl.concat([df_pred_test_wo_beyond, df_pred_test_w_beyond])
-df_test.select(DEFAULT_IMPRESSION_ID_COL, "ranked_scores").write_parquet(
+df_test.select(DEFAULT_IMPRESSION_ID_COL, "ranked_scores", "scores").write_parquet(
     ARTIFACT_DIR.joinpath("test_predictions.parquet")
 )
 

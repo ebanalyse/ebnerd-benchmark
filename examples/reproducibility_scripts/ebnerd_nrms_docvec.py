@@ -241,22 +241,33 @@ del df, df_train, df_validation, train_dataloader, val_dataloader, df_articles
 
 print("Initiating testset...")
 df_test = ebnerd_from_path(
-    PATH.joinpath("ebnerd_testset", "test"), history_size=HISTORY_SIZE, padding=0
-).sample(fraction=FRACTION_TEST)
+    PATH.joinpath("ebnerd_testset", "test"),
+    history_size=HISTORY_SIZE,
+    padding=0,
+    n_rows=1_000,
+)
 
-df_test = df_test.with_columns(
-    pl.col(DEFAULT_INVIEW_ARTICLES_COL).list.first().alias(DEFAULT_CLICKED_ARTICLES_COL)
-).select(COLUMNS + [DEFAULT_IS_BEYOND_ACCURACY_COL])
+if FRACTION_TEST < 1.0:
+    df_test = df_test.sample(fraction=FRACTION_TEST)
 
-df_test = df_test.with_columns(
-    pl.col(DEFAULT_INVIEW_ARTICLES_COL)
-    .list.eval(pl.element() * 0)
-    .alias(DEFAULT_LABELS_COL)
+df_test = (
+    df_test.with_columns(
+        pl.col(DEFAULT_INVIEW_ARTICLES_COL)
+        .list.first()
+        .alias(DEFAULT_CLICKED_ARTICLES_COL)
+    )
+    .select(COLUMNS + [DEFAULT_IS_BEYOND_ACCURACY_COL])
+    .with_columns(
+        pl.col(DEFAULT_INVIEW_ARTICLES_COL)
+        .list.eval(pl.element() * 0)
+        .alias(DEFAULT_LABELS_COL)
+    )
 )
 
 # Split test in beyond-accuracy TRUE / FALSE. In the BA 'article_ids_inview' is 250.
 df_test_wo_beyond = df_test.filter(~pl.col(DEFAULT_IS_BEYOND_ACCURACY_COL))
 df_test_w_beyond = df_test.filter(pl.col(DEFAULT_IS_BEYOND_ACCURACY_COL))
+del df_test
 
 df_test_chunks = split_df_chunks(df_test_wo_beyond, n_chunks=N_CHUNKS_TEST)
 df_pred_test_wo_beyond = []

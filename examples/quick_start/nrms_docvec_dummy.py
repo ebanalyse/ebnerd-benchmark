@@ -46,3 +46,10 @@ input = (his_input_title, pred_input_title)
 # fit/predict:
 model.model.fit(input, label_data, epochs=10)
 model.model.predict(input)
+
+#
+pred_input_title_shape_one = (1, DOCVEC_DIM)
+pred_input_title_one = np.array(
+    [np.random.rand(*pred_input_title_shape_one) for _ in range(BATCH_SIZE)]
+)
+model.scorer.predict((his_input_title, pred_input_title_one))

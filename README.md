@@ -3,18 +3,40 @@
   <img src="https://contributors-img.web.app/image?repo=ebanalyse/ebnerd-benchmark" width = 50/>
 </p>
 
-# Introduction
-Hello there 👋🏽
 
-We recommend to check the repository frequently, as we are updating and documenting it along the way!
+# Ekstra Bladet News Recommendation Dataset (EB-NeRD)
 
-## EBNeRD 
-Ekstra Bladet Recommender System repository, created for the RecSys'24 Challenge. 
+This repository serves as a **toolbox** for working with the **Ekstra Bladet News Recommendation Dataset (EB-NeRD)**—a rich dataset designed to advance research and benchmarking in news recommendation systems.  
+
+EB-NeRD is based on user behavior logs from **[Ekstra Bladet](https://ekstrabladet.dk/)**, a classical Danish newspaper published by **[JP/Politikens Media Group](https://jppol.dk/en/)** in Copenhagen. The dataset was created as part of the **[18th ACM Conference on Recommender Systems Challenge](https://recsys.acm.org/recsys24/challenge/)** (**RecSys'24 Challenge**).
+
+## What You'll Find Here
+This repository provides:
+- **Starter notebooks** for descriptive data analysis, data preprocessing, and baseline modeling.
+- **Examples of established models** to kickstart experimentation.
+<!-- - **A step-by-step tutorial** for running a **CodaBench server locally**, which is required to evaluate models on the hidden test set. -->
+
+## Useful Links
+For more information about the dataset, the RecSys '24 Challenge, and its usage, please visit: **[recsys.eb.dk](https://recsys.eb.dk/)**.
+
+<!-- ### CodaBench
+- **[CodaBench Server Setup Guide](LINK)** -->
+
+### Papers
+- **[RecSys Challenge Paper](https://dl.acm.org/doi/10.1145/3640457.3687164)**
+- **[Dataset Paper](https://dl.acm.org/doi/10.1145/3687151.3687152)**
+- **[RecSys'24 Challenge Proceedings](https://dl.acm.org/doi/proceedings/10.1145/3687151)**
+
+---
 
 # Getting Started
-We recommend [conda](https://docs.conda.io/projects/conda/en/latest/glossary.html#conda-environment) for environment management, and [VS Code](https://code.visualstudio.com/) for development. To install the necessart packages and run the example notebook:
 
-```
+
+We recommend using [**conda**](https://docs.conda.io/projects/conda/en/latest/glossary.html#conda-environment) for environment.
+
+## Installation
+
+```bash
 # 1. Create and activate a new conda environment
 conda create -n <environment_name> python=3.11
 conda activate <environment_name>
@@ -26,53 +48,74 @@ git clone https://github.com/ebanalyse/ebnerd-benchmark.git
 pip install .
 ```
 
-We have experienced issues installing *tensorflow* for M1 Macbooks (```sys_platform == 'darwin'```) when using conda. To avoid this, we suggest to use venv if running on macbooks.
-```
-python3 -m .venv .venv
-source  .venv/bin/activate
+### M1 Mac Users
+We have experienced issues installing *tensorflow* for M1 Macbooks (`sys_platform == 'darwin'`) when using conda. To avoid this, we suggest to use venv if running on macbooks.
+
+We have encountered issues installing *TensorFlow* on M1 MacBooks when using conda (i.e., `sys_platform == 'darwin'`).
+**Workaround**: Use `venv` instead of `conda`:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
 ```
 
-Installing ```.venv``` in project folder:
-```
-conda create -p .venv python==3.11.8
+Alternatively, install ```.venv``` directly in the project folder using conda:
+```bash
+conda create -p .venv python=3.11.8
 conda activate ./.venv
 ```
 
-## Running GPU
+### GPU Support
+To enable GPU support, install the appropriate TensorFlow package based on your platform:
+```bash
+# For Linux
+pip install tensorflow-gpu
 ```
-tensorflow-gpu; sys_platform == 'linux'
-tensorflow-macos; sys_platform == 'darwin'
+```bash
+# For macOS
+pip install tensorflow-macos
 ```
+
+---
 
 # Algorithms
-To get started quickly, we have implemented a couple of News Recommender Systems, specifically, 
-[Neural Recommendation with Long- and Short-term User Representations](https://aclanthology.org/P19-1033/) (LSTUR),
-[Neural Recommendation with Personalized Attention](https://arxiv.org/abs/1907.05559) (NPA),
-[Neural Recommendation with Attentive Multi-View Learning](https://arxiv.org/abs/1907.05576) (NAML), and
-[Neural Recommendation with Multi-Head Self-Attention](https://aclanthology.org/D19-1671/) (NRMS). 
-The source code originates from the brilliant RS repository, [recommenders](https://github.com/recommenders-team/recommenders). We have simply stripped it of all non-model-related code.
+To get started quickly, we have implemented several **news recommender systems**, including:
 
+| Model | Notebook | Example |
+|-------|----------|---------|
+| [**NRMS**](https://aclanthology.org/D19-1671/) | [NRMS Notebook](https://github.com/ebanalyse/ebnerd-benchmark/blob/main/examples/quick_start/nrms_ebnerd.ipynb) | [NRMS Example](https://github.com/ebanalyse/ebnerd-benchmark/blob/main/examples/quick_start/nrms_dummy.py) |
+| [**LSTUR**](https://aclanthology.org/P19-1033/) | - | [LSTUR Example](https://github.com/ebanalyse/ebnerd-benchmark/blob/main/examples/quick_start/lstur_dummy.py) |
+| [**NPA**](https://arxiv.org/abs/1907.05559) | - | [NPA Example](https://github.com/ebanalyse/ebnerd-benchmark/blob/main/examples/quick_start/npa_dummy.py) |
+| [**NAML**](https://arxiv.org/abs/1907.05576) | - | [NAML Example](https://github.com/ebanalyse/ebnerd-benchmark/blob/main/examples/quick_start/naml_dummy.py) |
+| **NRMSDocVec** | - | [NRMSDocVec Example](https://github.com/ebanalyse/ebnerd-benchmark/blob/main/examples/quick_start/nrms_docvec_dummy.py) |
 
-# Notebooks
-To help you get started, we have created a few notebooks. These are somewhat simple and designed to get you started. We do plan to have more at a later stage, such as reproducible model trainings.
-The notebooks were made on macOS, and you might need to perform small modifications to have them running on your system.
+The implementations of **NRMS**, **LSTUR**, **NPA**, and **NAML** are adapted from the excellent [**recommenders**](https://github.com/recommenders-team/recommenders) repository, with all non-model-related code removed for simplicity. 
+**NRMSDocVec** is our variation of **NRMS** where the *NewsEncoder* is initialized with **document embeddings** (i.e., article embeddings generated from a pretrained language model), rather than learning embeddings solely from scratch.
 
-## Model training
-We have created a [notebook](https://github.com/ebanalyse/ebnerd-benchmark/blob/main/examples/00_quick_start/nrms_ebnerd.ipynb) where we train NRMS on EB-NeRD - this is a very simple version using the demo dataset.
+---
 
-## Data manipulation and enrichment
-In the [dataset_ebnerd](https://github.com/ebanalyse/ebnerd-benchmark/blob/main/examples/00_quick_start/dataset_ebnerd.ipynb) demo, we show how one can join histories and create binary labels.
+## Data Manipulation & Enrichment
+
+To help you get started, we have created a set of **introductory notebooks** designed for quick experimentation, including:
+
+- [**ebnerd_descriptive_analysis**](https://github.com/ebanalyse/ebnerd-benchmark/blob/main/examples/datasets/ebnerd_descriptive_analysis.ipynb): Basic descriptive analysis of EB-NeRD.
+- [**ebnerd_overview**](https://github.com/ebanalyse/ebnerd-benchmark/blob/main/examples/datasets/ebnerd_overview.ipynb): Demonstrates how to join user histories and create binary labels.
+
+*Note: These notebooks were developed on macOS. Small adjustments may be required for other operating systems.*
+
+---
 
 # Reproduce EB-NeRD Experiments
 
+Make sure you’ve installed the repository and dependencies. Then activate your environment:
+
 Activate your enviroment:
-```
+```bash
 conda activate <environment_name>
 ```
 
-### [NRMSModel](https://github.com/ebanalyse/ebnerd-benchmark/blob/main/src/ebrec/models/newsrec/nrms.py) 
-
-```
+## [NRMSModel](https://github.com/ebanalyse/ebnerd-benchmark/blob/main/src/ebrec/models/newsrec/nrms.py) 
+```bash
 python examples/reproducibility_scripts/ebnerd_nrms.py
   --datasplit ebnerd_small \
   --epochs 5 \
@@ -89,14 +132,14 @@ python examples/reproducibility_scripts/ebnerd_nrms.py
   --dropout 0.20
 ```
 
-Tensorboards:
-```
+### Tensorboards:
+```bash
 tensorboard --logdir=ebnerd_predictions/runs
 ```
 
 ### [NRMSDocVec](https://github.com/ebanalyse/ebnerd-benchmark/blob/main/src/ebrec/models/newsrec/nrms_docvec.py) 
 
-```
+```bash
 python examples/reproducibility_scripts/ebnerd_nrms_docvec.py \
   --datasplit ebnerd_small \
   --epochs 5 \
@@ -113,10 +156,7 @@ python examples/reproducibility_scripts/ebnerd_nrms_docvec.py \
   --newsencoder_l2_regularization 1e-4
 ```
 
-Tensorboards:
-```
+### Tensorboards:
+```bash
 tensorboard --logdir=ebnerd_predictions/runs
 ```
-
-
-

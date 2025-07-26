@@ -9,7 +9,7 @@ docker run \
     -v /codabench:/codabench \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -d \
-    --env-file .env \
+    --env-file env \
     --name compute_worker \
     --restart unless-stopped \
     --log-opt max-size=50m \
@@ -23,7 +23,7 @@ docker run \
     -v /codabench:/codabench \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -d \
-    --env-file .env \
+    --env-file env \
     --name compute_worker_1 \
     --restart unless-stopped \
     --log-opt max-size=50m \
@@ -37,7 +37,7 @@ docker run \
     -v /codabench:/codabench \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -d \
-    --env-file .env \
+    --env-file env \
     --name compute_worker_2 \
     --restart unless-stopped \
     --log-opt max-size=50m \

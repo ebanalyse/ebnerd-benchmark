@@ -24,7 +24,7 @@ Please ensure your current working directory is:
 ```bash
 pwd = .../ebnerd-benchmark/codabench
 ```
-We are running the compute workers on a **Linux operating system**.
+We are running the compute workers on a **Linux operating system** on a the AWS t3.xlarge
 
 Once the Docker container is running, your submission will be evaluated.
 Important: Remember to follow the submission guidelines strictly.
@@ -54,7 +54,6 @@ docker pull codalab/competitions-v2-compute-worker:latest
 ## 3. Start a CPU Worker
 We ran using CPU workers.
 You will need an `.env` file containing the `BROKER_URL` required to connect to the challenge.
-Note, in this repository, we named it simply `env`.
 
 ## 4. Run the Docker Container
 ```bash
@@ -62,7 +61,7 @@ docker run \
     -v /codabench:/codabench \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -d \
-    --env-file env \
+    --env-file .env \
     --name compute_worker \
     --restart unless-stopped \
     --log-opt max-size=50m \
@@ -90,7 +89,7 @@ docker run \
     -v /codabench:/codabench \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -d \
-    --env-file env \
+    --env-file .env \
     --name compute_worker \
     --restart unless-stopped \
     --log-opt max-size=50m \
@@ -107,7 +106,7 @@ docker run \
     -v /codabench:/codabench \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -d \
-    --env-file env \
+    --env-file .env \
     --name compute_worker_1 \
     --restart unless-stopped \
     --log-opt max-size=50m \

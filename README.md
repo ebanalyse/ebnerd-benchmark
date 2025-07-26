@@ -15,7 +15,7 @@ Todo:
 
 This repository serves as a **toolbox** for working with the **Ekstra Bladet News Recommendation Dataset (EB-NeRD)**—a rich dataset designed to advance research and benchmarking in news recommendation systems.  
 
-EB-NeRD is based on user behavior logs from **Ekstra Bladet**, a classical Danish newspaper published by **JP/Politikens Media Group** in Copenhagen. The dataset was created as part of the **RecSys'24 Challenge**.
+EB-NeRD is based on user behavior logs from **[Ekstra Bladet](https://ekstrabladet.dk/)**, a classical Danish newspaper published by **[JP/Politikens Media Group](https://jppol.dk/en/)** in Copenhagen. The dataset was created as part of the **[18th ACM Conference on Recommender Systems Challenge](https://recsys.acm.org/recsys24/challenge/)** (**RecSys'24 Challenge**).
 
 ## What You'll Find Here
 This repository provides:
@@ -24,7 +24,7 @@ This repository provides:
 - **A step-by-step tutorial** for running a **CodaBench server locally**, which is required to evaluate models on the hidden test set.
 
 ## Useful Links
-For more information about the dataset and its usage, please visit: [recsys.eb.dk](https://recsys.eb.dk/).
+For more information about the dataset, the RecSys '24 Challenge, and its usage, please visit: **[recsys.eb.dk](https://recsys.eb.dk/)**.
 
 ### CodaBench
 - **[CodaBench Server Setup Guide](LINK)**

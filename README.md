@@ -3,15 +3,8 @@
   <img src="https://contributors-img.web.app/image?repo=ebanalyse/ebnerd-benchmark" width = 50/>
 </p>
 
-# Introduction
-Hello there 👋🏽
 
-<!-- Add little context about the dataset, and how it was used. 
-Todo:
-* Make models in table form (dropdown for NRMS.)
-* 
--->
-# Ekstra Bladet News Recommendation Dataset (EB-NeRD) Toolbox
+# Ekstra Bladet News Recommendation Dataset (EB-NeRD)
 
 This repository serves as a **toolbox** for working with the **Ekstra Bladet News Recommendation Dataset (EB-NeRD)**—a rich dataset designed to advance research and benchmarking in news recommendation systems.  
 

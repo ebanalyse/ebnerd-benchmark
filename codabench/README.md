@@ -1,3 +1,6 @@
+# Currently working on having a solution for running this locally.
+<!-- [1951](https://github.com/codalab/codabench/issues/1951) -->
+
 # Running the RecSys'24 Challenge on Codabench with Docker
 
 The **RecSys'24 Challenge** was hosted on [Codabench](https://www.codabench.org/) (huge shoutout to their team!).  

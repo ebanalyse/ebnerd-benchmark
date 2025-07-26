@@ -36,7 +36,7 @@ We recommend using [**conda**](https://docs.conda.io/projects/conda/en/latest/gl
 
 ## Installation
 
-```
+```bash
 # 1. Create and activate a new conda environment
 conda create -n <environment_name> python=3.11
 conda activate <environment_name>
@@ -49,29 +49,29 @@ pip install .
 ```
 
 ### M1 Mac Users
-We have experienced issues installing *tensorflow* for M1 Macbooks (```sys_platform == 'darwin'```) when using conda. To avoid this, we suggest to use venv if running on macbooks.
+We have experienced issues installing *tensorflow* for M1 Macbooks (`sys_platform == 'darwin'`) when using conda. To avoid this, we suggest to use venv if running on macbooks.
 
-We have encountered issues installing *TensorFlow* on M1 MacBooks when using conda (i.e., ```sys_platform == 'darwin'```).
-**Workaround**: Use ```venv``` instead of ```conda```:
+We have encountered issues installing *TensorFlow* on M1 MacBooks when using conda (i.e., `sys_platform == 'darwin'`).
+**Workaround**: Use `venv` instead of `conda`:
 
-```
+```bash
 python3 -m venv .venv
 source .venv/bin/activate
 ```
 
 Alternatively, install ```.venv``` directly in the project folder using conda:
-```
+```bash
 conda create -p .venv python=3.11.8
 conda activate ./.venv
 ```
 
 ### GPU Support
 To enable GPU support, install the appropriate TensorFlow package based on your platform:
-```
+```bash
 # For Linux
 pip install tensorflow-gpu
 ```
-```
+```bash
 # For macOS
 pip install tensorflow-macos
 ```
@@ -110,12 +110,12 @@ To help you get started, we have created a set of **introductory notebooks** des
 Make sure you’ve installed the repository and dependencies. Then activate your environment:
 
 Activate your enviroment:
-```
+```bash
 conda activate <environment_name>
 ```
 
 ## [NRMSModel](https://github.com/ebanalyse/ebnerd-benchmark/blob/main/src/ebrec/models/newsrec/nrms.py) 
-```
+```bash
 python examples/reproducibility_scripts/ebnerd_nrms.py
   --datasplit ebnerd_small \
   --epochs 5 \
@@ -133,13 +133,13 @@ python examples/reproducibility_scripts/ebnerd_nrms.py
 ```
 
 ### Tensorboards:
-```
+```bash
 tensorboard --logdir=ebnerd_predictions/runs
 ```
 
 ### [NRMSDocVec](https://github.com/ebanalyse/ebnerd-benchmark/blob/main/src/ebrec/models/newsrec/nrms_docvec.py) 
 
-```
+```bash
 python examples/reproducibility_scripts/ebnerd_nrms_docvec.py \
   --datasplit ebnerd_small \
   --epochs 5 \
@@ -157,6 +157,6 @@ python examples/reproducibility_scripts/ebnerd_nrms_docvec.py \
 ```
 
 ### Tensorboards:
-```
+```bash
 tensorboard --logdir=ebnerd_predictions/runs
 ```

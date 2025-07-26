@@ -1,0 +1,8 @@
+# Queue URL
+BROKER_URL=pyamqp://63a35e45-cb28-4eed-9c2c-af8072bf9d9c:d9506f3c-afe6-4824-baef-dc3c7e7fe80b@www.codabench.org:5672/988f0756-7c60-40e6-9e6b-40d830125d83
+
+# Location to store submissions/cache -- absolute path!
+HOST_DIRECTORY=/codabench
+
+# If SSL isn't enabled, then comment or remove the following line
+BROKER_USE_SSL=True

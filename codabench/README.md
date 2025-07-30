@@ -1,5 +1,6 @@
-# Currently working on having a solution for running this locally.
-<!-- [1951](https://github.com/codalab/codabench/issues/1951) -->
+**Currently working on having a solution for running this locally.**
+
+We're using the worker `codalab/competitions-v2-compute-worker:cpu1.1` instead of `codalab/competitions-v2-compute-worker:latest`. See Git issue [#1951](https://github.com/codalab/codabench/issues/1951) on Codabench.
 
 # Running the RecSys'24 Challenge on Codabench with Docker
 
@@ -51,7 +52,7 @@ sudo usermod -aG docker $USER
 
 ## 2. Pull the Codabench Compute Worker Image
 ```bash
-docker pull codalab/competitions-v2-compute-worker:latest
+docker pull codalab/competitions-v2-compute-worker:cpu1.1
 ```
 
 ## 3. Start a CPU Worker
@@ -69,7 +70,7 @@ docker run \
     --restart unless-stopped \
     --log-opt max-size=50m \
     --log-opt max-file=3 \
-    codalab/competitions-v2-compute-worker:latest
+    codalab/competitions-v2-compute-worker:cpu1.1
 ```
 
 ## 5. Check Logs and Running Jobs
@@ -87,7 +88,7 @@ docker ps
 ```bash
 docker stop compute_worker
 docker rm compute_worker
-docker pull codalab/competitions-v2-compute-worker:latest 
+docker pull codalab/competitions-v2-compute-worker:cpu1.1 
 docker run \
     -v /codabench:/codabench \
     -v /var/run/docker.sock:/var/run/docker.sock \
@@ -97,14 +98,14 @@ docker run \
     --restart unless-stopped \
     --log-opt max-size=50m \
     --log-opt max-file=3 \
-    codalab/competitions-v2-compute-worker:latest
+    codalab/competitions-v2-compute-worker:cpu1.1
 ```
 ## 7. Running Multiple Workers
 To add additional workers, simply change the container name (e.g., compute_worker_1):
 ```bash
 docker stop compute_worker_1
 docker rm compute_worker_1
-docker pull codalab/competitions-v2-compute-worker:latest
+docker pull codalab/competitions-v2-compute-worker:cpu1.1
 docker run \
     -v /codabench:/codabench \
     -v /var/run/docker.sock:/var/run/docker.sock \
@@ -114,7 +115,7 @@ docker run \
     --restart unless-stopped \
     --log-opt max-size=50m \
     --log-opt max-file=3 \
-    codalab/competitions-v2-compute-worker:latest
+    codalab/competitions-v2-compute-worker:cpu1.1
 ```
 For convenience, we have also included a script (`codabench_docker.sh`) that starts **3 workers automatically**.  
 You can run it with:

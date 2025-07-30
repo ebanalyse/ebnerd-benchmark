@@ -4,7 +4,7 @@
 
 docker stop compute_worker
 docker rm compute_worker
-docker pull codalab/competitions-v2-compute-worker:latest 
+docker pull codalab/competitions-v2-compute-worker:cpu1.1
 docker run \
     -v /codabench:/codabench \
     -v /var/run/docker.sock:/var/run/docker.sock \
@@ -14,11 +14,11 @@ docker run \
     --restart unless-stopped \
     --log-opt max-size=50m \
     --log-opt max-file=3 \
-    codalab/competitions-v2-compute-worker:latest
+    codalab/competitions-v2-compute-worker:cpu1.1
 
 docker stop compute_worker_1
 docker rm compute_worker_1
-docker pull codalab/competitions-v2-compute-worker:latest
+docker pull codalab/competitions-v2-compute-worker:cpu1.1
 docker run \
     -v /codabench:/codabench \
     -v /var/run/docker.sock:/var/run/docker.sock \
@@ -28,11 +28,11 @@ docker run \
     --restart unless-stopped \
     --log-opt max-size=50m \
     --log-opt max-file=3 \
-    codalab/competitions-v2-compute-worker:latest 
+    codalab/competitions-v2-compute-worker:cpu1.1
 
 docker stop compute_worker_2
 docker rm compute_worker_2
-docker pull codalab/competitions-v2-compute-worker:latest
+docker pull codalab/competitions-v2-compute-worker:cpu1.1
 docker run \
     -v /codabench:/codabench \
     -v /var/run/docker.sock:/var/run/docker.sock \
@@ -42,4 +42,4 @@ docker run \
     --restart unless-stopped \
     --log-opt max-size=50m \
     --log-opt max-file=3 \
-    codalab/competitions-v2-compute-worker:latest 
+    codalab/competitions-v2-compute-worker:cpu1.1

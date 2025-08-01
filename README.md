@@ -14,13 +14,13 @@ EB-NeRD is based on user behavior logs from **[Ekstra Bladet](https://ekstrablad
 This repository provides:
 - **Starter notebooks** for descriptive data analysis, data preprocessing, and baseline modeling.
 - **Examples of established models** to kickstart experimentation.
-<!-- - **A step-by-step tutorial** for running a **CodaBench server locally**, which is required to evaluate models on the hidden test set. -->
+- **A step-by-step tutorial** for running a **CodaBench server locally**, which is required to evaluate models on the hidden test set.
 
 ## Useful Links
 For more information about the dataset, the RecSys '24 Challenge, and its usage, please visit: **[recsys.eb.dk](https://recsys.eb.dk/)**.
 
-<!-- ### CodaBench
-- **[CodaBench Server Setup Guide](LINK)** -->
+### CodaBench
+- **[CodaBench Server Setup Guide](https://github.com/ebanalyse/ebnerd-benchmark/tree/main/codabench)**
 
 ### Papers
 - **[RecSys Challenge Paper](https://dl.acm.org/doi/10.1145/3640457.3687164)**

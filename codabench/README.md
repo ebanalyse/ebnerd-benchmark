@@ -1,13 +1,10 @@
 # Running the RecSys'24 Challenge on Codabench with Docker
 
-The **RecSys'24 Challenge** was hosted on [Codabench](https://www.codabench.org/) (huge shoutout to their team!).  
-Each submission during the challenge was evaluated using a **hidden test set** on compute workers. These workers were hosted on virtual machines provided by [Ekstra Bladet](https://ekstrabladet.dk/) and [JP/Politikens Media Group](https://jppol.dk/en/).
+The **RecSys'24 Challenge** was hosted on [Codabench](https://www.codabench.org/) (huge shoutout to their team!). Each submission during the challenge was evaluated using a **hidden test set** on compute workers. These workers were hosted on virtual machines provided by [Ekstra Bladet](https://ekstrabladet.dk/) and [JP/Politikens Media Group](https://jppol.dk/en/).
 
 **Competition site:** [www.codabench.org/competitions/2469](https://www.codabench.org/competitions/2469/)
 
-Now that the challenge has concluded, the original virtual machines are no longer active.  
-However, **you can reproduce the setup on your own machine**—whether it’s a physical computer or a cloud-based VM.  
-You can even add multiple compute workers to a queue to process submissions simultaneously.
+Now that the challenge has concluded, the original virtual machines are no longer active. However, **you can reproduce the setup on your own machine**—whether it’s a physical computer or a cloud-based VM. You can even add multiple compute workers to a queue to process submissions simultaneously.
 
 ---
 
@@ -26,11 +23,9 @@ cd codabench
 ```
 We are running the compute workers on a **Linux operating system** on a the AWS `t3.xlarge`.
 
-Once the Docker container is running, your submission will be evaluated.
-Important: Remember to follow the submission guidelines strictly.
+Once the Docker container is running, your submission will be evaluated. **Important**: Remember to follow the submission guidelines strictly.
 
-The evaluation process can take several hours (e.g., 4–5 hours). Keep an eye on your worker, as technical issues can occur and you may need to reset it.
-You can view error logs directly on Codabench:
+The evaluation process can take several hours (e.g., 4–5 hours). Keep an eye on your worker, as technical issues can occur and you may need to reset it. You can view error logs directly on Codabench:
 `Submissions => LOGS => Scoring Logs`, this is extremely useful for debugging.
 
 ---
@@ -56,8 +51,7 @@ docker pull codalab/competitions-v2-compute-worker:cpu1.1
 ```
 
 ## 3. Start a CPU Worker
-We ran using CPU workers.
-You will need an `.env` file containing the `BROKER_URL` required to connect to the challenge.
+We ran using CPU workers. You will need an `.env` file containing the `BROKER_URL` required to connect to the challenge.
 
 ## 4. Run the Docker Container
 ```bash

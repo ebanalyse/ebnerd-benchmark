@@ -1,7 +1,3 @@
-**Currently working on having a solution for running this locally.**
-
-We're using the worker `codalab/competitions-v2-compute-worker:cpu1.1` instead of `codalab/competitions-v2-compute-worker:latest`. See Git issue [#1951](https://github.com/codalab/codabench/issues/1951) on Codabench.
-
 # Running the RecSys'24 Challenge on Codabench with Docker
 
 The **RecSys'24 Challenge** was hosted on [Codabench](https://www.codabench.org/) (huge shoutout to their team!).  
@@ -127,3 +123,13 @@ You can run it with:
 ```bash
 source codabench_docker.sh
 ```
+
+# Issues
+As [Codabench](https://www.codabench.org/) is constantly evolving, we have experienced issues, such as remote worker connections being dropped or temporary updates on the site affecting our competition. We recommend reaching out and creating a [Git issue](https://github.com/codalab/codabench/issues) if you identify something unusual in your logs. The Codabench team has always been extremely helpful, and we have always managed to find a solution. Examples include:
+[#1951](https://github.com/codalab/codabench/issues/1951),
+[#1677](https://github.com/codalab/codabench/issues/1677),
+[#1471](https://github.com/codalab/codabench/issues/1471),
+[#1469](https://github.com/codalab/codabench/issues/1469),
+[#1455](https://github.com/codalab/codabench/issues/1455), and
+[#1369](https://github.com/codalab/codabench/issues/1369)
+

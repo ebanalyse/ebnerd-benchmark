@@ -26,9 +26,9 @@ The instructions below outline **how we ran it during the challenge** using **Do
 
 Please ensure your current working directory is:
 ```bash
-pwd = .../ebnerd-benchmark/codabench
+cd codabench
 ```
-We are running the compute workers on a **Linux operating system** on a the AWS t3.xlarge
+We are running the compute workers on a **Linux operating system** on a the AWS `t3.xlarge`.
 
 Once the Docker container is running, your submission will be evaluated.
 Important: Remember to follow the submission guidelines strictly.
@@ -48,6 +48,10 @@ Run the following commands to install Docker and ensure your user is added to th
 ```bash
 curl https://get.docker.com | sudo sh
 sudo usermod -aG docker $USER
+```
+Log in to the new docker group:
+```bash
+newgrp docker
 ```
 
 ## 2. Pull the Codabench Compute Worker Image
